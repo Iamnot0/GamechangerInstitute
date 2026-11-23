@@ -88,7 +88,7 @@ async def require_staff(
             headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
         ) from None
     except NotStaffError as exc:
-        logger.warning("staff access denied", extra={"actor_sub": exc.subject})
+        logger.warning("staff access denied", extra={"actor_sub": exc.subject, "reason": exc.reason})
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your account does not have access to the staff console.",

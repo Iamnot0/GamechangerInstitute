@@ -47,6 +47,7 @@ class AuthConfig:
     jwks_url: str
     authorized_parties: frozenset[str]
     staff_roles: frozenset[str]
+    staff_organization_id: str
 
 
 class Settings(BaseSettings):
@@ -76,6 +77,7 @@ class Settings(BaseSettings):
     auth_jwks_url: str | None = None
     auth_authorized_parties: Annotated[tuple[str, ...], NoDecode] = ()
     auth_staff_roles: Annotated[tuple[str, ...], NoDecode] = ("admin", "staff")
+    auth_staff_organization_id: str | None = None
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -103,6 +105,15 @@ class Settings(BaseSettings):
             raise ValueError("AUTH_ISSUER must be an https URL without a trailing slash, matching the token's iss")
         return issuer
 
+    @field_validator("auth_staff_organization_id")
+    @classmethod
+    def _require_exact_organization_id(cls, organization_id: str | None) -> str | None:
+        if organization_id is not None and (not organization_id or organization_id != organization_id.strip()):
+            raise ValueError(
+                "AUTH_STAFF_ORGANIZATION_ID must be a non-blank organization id without surrounding spaces"
+            )
+        return organization_id
+
     @field_validator("auth_jwks_url")
     @classmethod
     def _require_secure_jwks_url(cls, url: str | None) -> str | None:
@@ -125,8 +136,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _require_complete_auth(self) -> Self:
-        if self.auth_issuer and not (self.auth_authorized_parties and self.auth_staff_roles):
-            raise ValueError("AUTH_ISSUER requires AUTH_AUTHORIZED_PARTIES and AUTH_STAFF_ROLES")
+        if self.auth_issuer and not (
+            self.auth_authorized_parties and self.auth_staff_roles and self.auth_staff_organization_id
+        ):
+            raise ValueError(
+                "AUTH_ISSUER requires AUTH_AUTHORIZED_PARTIES, AUTH_STAFF_ROLES and AUTH_STAFF_ORGANIZATION_ID"
+            )
         return self
 
     @property
@@ -150,11 +165,12 @@ class Settings(BaseSettings):
 
     @property
     def auth(self) -> AuthConfig | None:
-        if self.auth_issuer is None:
+        if self.auth_issuer is None or self.auth_staff_organization_id is None:
             return None
         return AuthConfig(
             issuer=self.auth_issuer,
             jwks_url=self.auth_jwks_url or f"{self.auth_issuer}/.well-known/jwks.json",
             authorized_parties=frozenset(self.auth_authorized_parties),
             staff_roles=frozenset(self.auth_staff_roles),
+            staff_organization_id=self.auth_staff_organization_id,
         )

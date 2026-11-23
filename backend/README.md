@@ -68,6 +68,7 @@ Migrations connect with `DATABASE_URL_UNPOOLED` when it is set, otherwise `DATAB
 | `AUTH_JWKS_URL` | `{AUTH_ISSUER}/.well-known/jwks.json` | Where the issuer publishes its signing keys. Must be https. |
 | `AUTH_AUTHORIZED_PARTIES` | required with `AUTH_ISSUER` | Comma-separated exact origins accepted in the token's `azp` claim, normally the staff console's origin |
 | `AUTH_STAFF_ROLES` | `admin,staff` | Values of the token's `role` claim that grant access |
+| `AUTH_STAFF_ORGANIZATION_ID` | required with `AUTH_ISSUER` | The staff organization's id (`org_...`). Only tokens whose `org_id` claim equals it are staff. |
 
 ## Staff authentication
 
@@ -75,19 +76,21 @@ The admin API accepts `Authorization: Bearer <session JWT>` from any OIDC provid
 
 ```json
 {
-  "role": "{{user.public_metadata.role}}",
-  "email": "{{user.primary_email_address}}"
+  "email": "{{user.primary_email_address}}",
+  "role": "{{org.role}}",
+  "org_id": "{{org.id}}"
 }
 ```
 
-and set `role` to `admin` or `staff` in each invited member's public metadata. A token is accepted when:
+Staff are members of the Institute's Clerk organization, and the console must make it the session's active organization. Because any user of the Clerk app can create an organization and be its `org:admin`, the role alone proves nothing, so the organization check is mandatory: the app refuses to start with `AUTH_ISSUER` but without `AUTH_STAFF_ORGANIZATION_ID`. A token is accepted when:
 
 - its signature verifies against a key from the issuer's JWKS (RS256 only),
 - `iss` equals `AUTH_ISSUER`, `azp` is one of `AUTH_AUTHORIZED_PARTIES`, and `sub` is present,
 - `exp`, `nbf` and `iat` hold within a 10-second leeway,
+- `org_id` equals `AUTH_STAFF_ORGANIZATION_ID`,
 - `role` is one of `AUTH_STAFF_ROLES`. A missing role grants nothing.
 
-Missing, malformed, expired or foreign tokens get `401` with `WWW-Authenticate: Bearer`; valid tokens without a staff role get `403`; if the signing keys have never loaded, `503`. Keys are cached in memory, reloaded hourly or when a token names an unknown key (at most once a minute), and fetched with a 5-second timeout, so requests never wait on the provider once keys are held. Tokens are never logged; staff actions are logged with the actor's `sub`.
+Missing, malformed, expired or foreign tokens get `401` with `WWW-Authenticate: Bearer`; valid tokens from another organization or without a staff role get `403`, logged with the reason; if the signing keys have never loaded, `503`. Keys are cached in memory, reloaded hourly or when a token names an unknown key (at most once a minute), and fetched with a 5-second timeout, so requests never wait on the provider once keys are held. Tokens are never logged; staff actions are logged with the actor's `sub`.
 
 The console calls the admin API server to server. CORS does not allow the `Authorization` header or `PATCH`, so browsers cannot call it directly.
 
@@ -98,6 +101,7 @@ The console calls the admin API server to server. CORS does not allow the `Autho
 - Service root `backend/`, entrypoint `app.asgi:app`. Python 3.14 comes from `.python-version` and `requires-python`; dependencies install from `pyproject.toml` and `uv.lock`.
 - The service must see the paths it serves (`/v1/enquiries`, `/healthz`, `/readyz`), so strip any public prefix with a `request.path` transform in the service's routes.
 - Set `ENVIRONMENT=production`, `TRUSTED_CLIENT_IP_HEADER=x-real-ip`, `DATABASE_POOL_SIZE=0`, `RATE_LIMIT_HASH_KEY` and the SMTP variables. The Neon and Upstash integrations provide `DATABASE_URL`, `DATABASE_URL_UNPOOLED` and the `rediss://` URL.
+- For the staff console, set `AUTH_ISSUER` to the Clerk instance URL, `AUTH_AUTHORIZED_PARTIES` to the production origin, `AUTH_STAFF_ROLES=org:admin,org:member` and `AUTH_STAFF_ORGANIZATION_ID` to the Institute's Clerk organization id (`org_...`).
 - Run `alembic upgrade head` against `DATABASE_URL_UNPOOLED` before promoting a deployment that changes the schema.
 - The notification email is sent before the `202` is returned, because the runtime may suspend the instance after the response.
 

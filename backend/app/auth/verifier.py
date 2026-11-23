@@ -25,16 +25,18 @@ class InvalidTokenError(Exception):
 
 
 class NotStaffError(Exception):
-    def __init__(self, subject: str) -> None:
-        super().__init__(subject)
+    def __init__(self, subject: str, reason: str) -> None:
+        super().__init__(reason)
         self.subject = subject
+        self.reason = reason
 
 
 class StaffTokenVerifier:
     """Verifies OIDC session tokens (RS256 JWTs) and admits only members holding a staff role.
 
-    Provider-specific claims are limited to ``role`` and ``email``, which the identity provider's session token
-    template must add.
+    Provider-specific claims are limited to ``org_id``, ``role`` and ``email``, which the identity provider's session
+    token template must add. Membership of the staff organization is always required: anyone able to create their own
+    organization could otherwise grant themselves any organization role.
     """
 
     def __init__(self, config: AuthConfig, keys: JwksCache, *, leeway_seconds: float = 10) -> None:
@@ -72,9 +74,11 @@ class StaffTokenVerifier:
         subject = claims["sub"]
         if not isinstance(subject, str) or not subject:
             raise InvalidTokenError("missing subject")
+        if claims.get("org_id") != self._config.staff_organization_id:
+            raise NotStaffError(subject, "wrong organization")
         role = claims.get("role")
         if not isinstance(role, str) or role not in self._config.staff_roles:
-            raise NotStaffError(subject)
+            raise NotStaffError(subject, "missing staff role")
         email = claims.get("email")
         return StaffMember(subject=subject, email=email if isinstance(email, str) and email else None, role=role)
 
