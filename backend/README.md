@@ -6,7 +6,7 @@ Accepts enquiries from the website, stores them in PostgreSQL and emails each ne
 | --- | --- |
 | `POST /v1/enquiries` | Submit an enquiry (`202 {"id", "received_at"}`, errors as `application/problem+json`) |
 | `GET /healthz` | Liveness, no dependencies |
-| `GET /readyz` | Readiness of PostgreSQL and Redis (`503` when either fails) |
+| `GET /readyz` | Readiness of PostgreSQL (`503` when it cannot be reached) |
 | `GET /v1/admin/enquiries` | Staff: list, newest first. `status`, `kind`, `q` (name, email or organisation), `limit` (1-100, default 25), `cursor` (the previous page's `next_cursor`) |
 | `GET /v1/admin/enquiries/summary` | Staff: totals by status and by kind |
 | `GET /v1/admin/enquiries/{id}` | Staff: every field plus status events, newest first |
@@ -48,12 +48,11 @@ Migrations connect with `DATABASE_URL_UNPOOLED` when it is set, otherwise `DATAB
 | `DATABASE_URL_UNPOOLED` | unset | Direct connection for migrations when `DATABASE_URL` points at PgBouncer |
 | `DATABASE_POOL_SIZE` | `2` | Connections kept per process. `0` opens a connection per checkout, which SQLAlchemy recommends behind PgBouncer. |
 | `DATABASE_MAX_OVERFLOW` | `3` | Extra connections beyond the pool under load |
-| `REDIS_URL` | required | `redis://host:6379/0`, or `rediss://` for TLS with certificate verification |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated exact origins, no paths or wildcards |
 | `TRUSTED_CLIENT_IP_HEADER` | unset | Header holding the client IP, set by an edge that overwrites any client-supplied value (`x-real-ip` on Vercel). A submission without a valid value is rejected with `400`, since it did not come through the edge. Unset uses the peer address from uvicorn. |
 | `RATE_LIMIT_PER_IP` | `5` | Valid submissions per client per window (honeypot hits are not counted). A client is an IPv4 address or an IPv6 /64. |
 | `RATE_LIMIT_WINDOW_SECONDS` | `600` | Window length |
-| `RATE_LIMIT_HASH_KEY` | required | Secret, at least 32 characters. Keys the HMAC-SHA256 that identifies a client IP in Redis. The app refuses to start without it, in every environment. Rotating it resets open windows. |
+| `RATE_LIMIT_HASH_KEY` | required | Secret, at least 32 characters. Keys the HMAC-SHA256 that identifies a client in the `rate_limit_windows` table. The app refuses to start without it, in every environment. Rotating it resets open windows. |
 | `SMTP_HOST` | unset | Unset disables notification emails |
 | `SMTP_PORT` | `587` | |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | unset | Sent only when set |
@@ -100,7 +99,7 @@ The console calls the admin API server to server. CORS does not allow the `Autho
 
 - Service root `backend/`, entrypoint `app.asgi:app`. Python 3.14 comes from `.python-version` and `requires-python`; dependencies install from `pyproject.toml` and `uv.lock`.
 - The service must see the paths it serves (`/v1/enquiries`, `/healthz`, `/readyz`), so strip any public prefix with a `request.path` transform in the service's routes.
-- Set `ENVIRONMENT=production`, `TRUSTED_CLIENT_IP_HEADER=x-real-ip`, `DATABASE_POOL_SIZE=0`, `RATE_LIMIT_HASH_KEY` and the SMTP variables. The Neon and Upstash integrations provide `DATABASE_URL`, `DATABASE_URL_UNPOOLED` and the `rediss://` URL.
+- Set `ENVIRONMENT=production`, `TRUSTED_CLIENT_IP_HEADER=x-real-ip`, `DATABASE_POOL_SIZE=0`, `RATE_LIMIT_HASH_KEY` and the SMTP variables. The Neon integration provides `DATABASE_URL` and `DATABASE_URL_UNPOOLED`.
 - For the staff console, set `AUTH_ISSUER` to the Clerk instance URL, `AUTH_AUTHORIZED_PARTIES` to the production origin, `AUTH_STAFF_ROLES=org:admin,org:member` and `AUTH_STAFF_ORGANIZATION_ID` to the Institute's Clerk organization id (`org_...`).
 - Run `alembic upgrade head` against `DATABASE_URL_UNPOOLED` before promoting a deployment that changes the schema.
 - The notification email is sent before the `202` is returned, because the runtime may suspend the instance after the response.
@@ -120,7 +119,10 @@ docker run -d -p 8000:8000 --env-file prod.env gci-backend
 ### Everywhere
 
 - Logs are JSON lines on stdout. They carry request id, enquiry id, kind, status and latency, never names, emails, messages or IPs. Uvicorn's own access log is discarded because it records client IPs.
-- Each client gets a fixed window in Redis. Without a trusted header, a peer with no usable IP (which uvicorn does not produce over TCP) is limited in a shared `unknown` bucket and logged as a warning.
-- No global limit ever rejects a submission, so a botnet cannot lock legitimate visitors out. The hourly notification budget protects the inbox instead: enquiries past it are stored and logged as `notification budget exceeded`, and rows with an empty `notified_at` are the ones to review.
-- Redis outages never block submissions or emails: the client limit and the notification budget both fail open and log a warning. This is a deliberate availability trade-off; during an outage, submissions and emails are unthrottled. PostgreSQL is the source of truth; an enquiry whose email failed, timed out or exceeded the budget keeps `notified_at` empty.
+- PostgreSQL is the only backing store. Each request works on one database connection, even with `DATABASE_POOL_SIZE=0`.
+- Rate limits live in `rate_limit_windows`, one row per key. A hit is a single `INSERT ... ON CONFLICT DO UPDATE` that restarts an expired window or increments the current one, timed by the database clock. Keys are `rate-limit:enquiries:client:<HMAC>` and the fixed `notification-budget:enquiries`; no IP is stored.
+- The per-client hit runs in the same transaction as the enquiry insert, so a refused or failed request leaves no count behind. If that statement fails, the request fails like any other database error. Without a trusted header, a peer with no usable IP (which uvicorn does not produce over TCP) is limited in a shared `unknown` bucket and logged as a warning.
+- No global limit ever rejects a submission, so a botnet cannot lock legitimate visitors out. The hourly notification budget protects the inbox instead: enquiries past it are stored and logged as `notification budget exceeded`, and rows with an empty `notified_at` are the ones to review. The budget commits on its own before the email is sent, so the shared row is never locked during SMTP; if its statement fails, the email is sent anyway and a warning is logged.
+- Expired windows are cleaned up without a scheduler: at most once every 10 minutes per process, a hit also deletes up to 500 windows that expired more than a day ago, oldest first, skipping rows other requests hold. The cost stays bounded and rare, recent windows are never touched, and the table cannot grow without limit.
+- PostgreSQL is the source of truth; an enquiry whose email failed, timed out or exceeded the budget keeps `notified_at` empty.
 - Configuration errors never echo the values supplied, so a failed start cannot leak secrets into logs.

@@ -28,6 +28,7 @@ GameChanger Institute runs an ICF-informed leadership programme: twelve weeks of
 |---|---|
 | **Site** | Home, Programme, For organisations, The Institute, Register interest, Privacy |
 | **Registration** | Individual, corporate and general enquiries, stored in Postgres and emailed to the Institute |
+| **Staff console** | `/admin`: invite-only Clerk sign-in, restricted to the Institute's organization; review enquiries and record status changes with an audit trail |
 | **Experience** | Light and dark themes, video hero, smooth scrolling, scroll-driven 3D motion, full reduced-motion support |
 | **Quality bar** | WCAG AA contrast in both themes, keyboard operable, no horizontal overflow from 360 px up |
 
@@ -41,7 +42,6 @@ flowchart LR
   edge -- "/*" --> web[frontend<br/>Next.js 16]
   edge -- "/api/*" --> api[backend<br/>FastAPI]
   api --> pg[(Neon Postgres<br/>ap-southeast-1)]
-  api --> redis[(Upstash Redis<br/>rate limits)]
   api --> mail[Resend SMTP<br/>notifications]
 ```
 
@@ -49,8 +49,9 @@ flowchart LR
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Lenis |
 | Backend | Python 3.14, FastAPI, SQLAlchemy 2 (asyncpg), Alembic, Pydantic 2 |
-| Data | PostgreSQL (Neon), Redis (Upstash) |
+| Data | PostgreSQL (Neon): registrations, staff history, rate-limit windows |
 | Email | SMTP with STARTTLS (Resend) |
+| Staff identity | Clerk: invite-only, organization roles, RS256 session tokens verified by the API |
 | Platform | Vercel Services, functions in Singapore (`sin1`) |
 
 ## Repository structure
@@ -73,12 +74,12 @@ flowchart LR
 
 ## Getting started
 
-**Requirements:** Node.js 24, Python 3.14 with [uv](https://docs.astral.sh/uv/), PostgreSQL 16 or later, Redis 7 or later.
+**Requirements:** Node.js 24, Python 3.14 with [uv](https://docs.astral.sh/uv/), PostgreSQL 16 or later.
 
 ```sh
 # API
 cd backend
-cp .env.example .env                       # set DATABASE_URL, REDIS_URL, RATE_LIMIT_HASH_KEY
+cp .env.example .env                       # set DATABASE_URL, RATE_LIMIT_HASH_KEY
 uv sync
 uv run --env-file .env alembic upgrade head
 uv run --env-file .env uvicorn app.main:create_app --factory --port 8000 --reload
@@ -109,8 +110,7 @@ Generate a rate-limit key with `python -c "import secrets; print(secrets.token_u
 | `DATABASE_URL` | required | Postgres URL; Neon's `postgresql://…?sslmode=require` form is accepted |
 | `DATABASE_URL_UNPOOLED` | unset | Direct connection used by migrations |
 | `DATABASE_POOL_SIZE` | `2` | `0` behind a transaction pooler such as Neon's |
-| `REDIS_URL` | required | `redis://` or `rediss://` (TLS, verified) |
-| `RATE_LIMIT_HASH_KEY` | required | Secret, 32+ characters; keys the HMAC that identifies a client in Redis |
+| `RATE_LIMIT_HASH_KEY` | required | Secret, 32+ characters; keys the HMAC that identifies a client in the rate-limit table |
 | `RATE_LIMIT_PER_IP` / `RATE_LIMIT_WINDOW_SECONDS` | `5` / `600` | Submissions allowed per client per window |
 | `TRUSTED_CLIENT_IP_HEADER` | unset | `x-real-ip` on Vercel, which overwrites any client-supplied value |
 | `CORS_ORIGINS` | `http://localhost:3000` | Exact origins, comma-separated |
@@ -125,7 +125,9 @@ The full list, with validation rules, is in [`backend/README.md`](backend/README
 |---|---|---|
 | `POST` | `/api/v1/enquiries` | `202 {"id", "received_at"}`; errors as RFC 9457 `application/problem+json` |
 | `GET` | `/api/healthz` | Liveness |
-| `GET` | `/api/readyz` | Postgres and Redis readiness, `503` when either fails |
+| `GET` | `/api/readyz` | Database readiness, `503` when it fails |
+| `GET` | `/v1/admin/enquiries`, `/summary`, `/{id}` | Staff only, server to server from the console |
+| `PATCH` | `/v1/admin/enquiries/{id}` | Staff only: change status with optimistic concurrency |
 
 Submissions accept an `Idempotency-Key` header: a retry with the same key returns the original receipt instead of creating a second record.
 
@@ -134,7 +136,7 @@ Submissions accept an `Idempotency-Key` header: a retry with the same key return
 Deployed on Vercel from this repository. Both services ship in one atomic deployment and roll back together.
 
 1. **Production builds migrate first.** The backend build step runs `alembic upgrade head` when `VERCEL_ENV=production`. A failed migration fails the build, so code never goes live against a schema it does not match. Preview builds skip it.
-2. **Data stores come from the Vercel Marketplace.** Neon and Upstash inject their connection variables into the project. Set `REDIS_URL` to the Upstash `rediss://` URL.
+2. **The database comes from the Vercel Marketplace.** Neon injects `DATABASE_URL` and `DATABASE_URL_UNPOOLED`; rate limiting uses the same database, so there is no second data store.
 3. **Secrets are stored as Vercel sensitive variables.** They never live in the repository.
 
 ```sh

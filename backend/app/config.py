@@ -9,7 +9,6 @@ from pydantic import (
     PositiveFloat,
     PositiveInt,
     PostgresDsn,
-    RedisDsn,
     SecretStr,
     field_validator,
     model_validator,
@@ -57,7 +56,6 @@ class Settings(BaseSettings):
     database_url: PostgresDsn
     database_pool_size: int = Field(default=2, ge=0, description="0 disables client-side pooling.")
     database_max_overflow: int = Field(default=3, ge=0)
-    redis_url: RedisDsn
     cors_origins: Annotated[tuple[str, ...], NoDecode] = ("http://localhost:3000",)
     trusted_client_ip_header: str | None = None
     rate_limit_per_ip: PositiveInt = 5

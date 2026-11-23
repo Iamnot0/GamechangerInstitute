@@ -7,7 +7,6 @@ from typing import Final
 
 import aiosmtplib
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import SmtpConfig
 from app.domain import EnquiryKind, RoleTransition
@@ -39,15 +38,10 @@ class EnquiryNotifier:
     Enquiries left unsent, whether over budget or after a failure, keep notified_at empty for the team to review.
     """
 
-    def __init__(
-        self,
-        smtp: SmtpConfig | None,
-        budget: NotificationBudget,
-        session_factory: async_sessionmaker[AsyncSession],
-    ) -> None:
+    def __init__(self, smtp: SmtpConfig | None, budget: NotificationBudget, enquiries: EnquiryRepository) -> None:
         self._smtp = smtp
         self._budget = budget
-        self._session_factory = session_factory
+        self._enquiries = enquiries
 
     async def notify(self, enquiry: Enquiry) -> None:
         log_context = {"enquiry_id": str(enquiry.id)}
@@ -77,8 +71,7 @@ class EnquiryNotifier:
             return
 
         try:
-            async with self._session_factory() as session:
-                await EnquiryRepository(session).mark_notified(enquiry.id)
+            await self._enquiries.mark_notified(enquiry.id)
         except SQLAlchemyError as exc:
             logger.error("notification sent but not recorded", extra=log_context | {"error": type(exc).__name__})
             return

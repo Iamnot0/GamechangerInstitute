@@ -84,3 +84,13 @@ class EnquiryEvent(Base):
 
 
 Index("ix_enquiry_events_enquiry_id_created_at", EnquiryEvent.enquiry_id, EnquiryEvent.created_at.desc())
+
+
+class RateLimitWindow(Base):
+    """A fixed counting window per key; keys are namespaced HMACs or fixed names, never raw client data."""
+
+    __tablename__ = "rate_limit_windows"
+
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    count: Mapped[int] = mapped_column(Integer)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

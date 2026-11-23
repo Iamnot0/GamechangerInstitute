@@ -14,7 +14,6 @@ dependencies = [
     "pydantic~=2.14",
     "pyjwt[crypto]~=2.15",
     "pydantic-settings~=2.16",
-    "redis~=8.1",
     "sqlalchemy[asyncio]~=2.1",
     "uvicorn[standard]~=0.54.0",
 ]

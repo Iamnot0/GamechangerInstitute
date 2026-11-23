@@ -21,16 +21,16 @@ from app.middleware import (
     UnhandledErrorMiddleware,
 )
 from app.problems import EXCEPTION_HANDLERS
-from app.redis_client import create_redis_client
+from app.services.cadence import Cadence
 from app.services.fixed_window import FixedWindow
-from app.services.notification_budget import NotificationBudget
-from app.services.notifier import EnquiryNotifier
-from app.services.rate_limit import FixedWindowRateLimiter
+from app.services.notification_budget import BudgetPolicy
+from app.services.rate_limit import RateLimitPolicy
 from app.state import AppState
 
 _MAX_REQUEST_BODY_BYTES: Final = 16 * 1024
 _SECONDS_PER_HOUR: Final = 3600
 _JWKS_FETCH_TIMEOUT_SECONDS: Final = 5.0
+_PURGE_INTERVAL_SECONDS: Final = 600
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -42,28 +42,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         async with AsyncExitStack() as resources:
             engine = create_engine(settings)
             resources.push_async_callback(engine.dispose)
-            session_factory = create_session_factory(engine)
-            redis = create_redis_client(settings)
-            resources.push_async_callback(redis.aclose)
             state = AppState(
                 settings=settings,
                 engine=engine,
-                session_factory=session_factory,
-                redis=redis,
-                rate_limiter=FixedWindowRateLimiter(
-                    redis,
+                session_factory=create_session_factory(engine),
+                rate_limit_policy=RateLimitPolicy(
                     namespace="rate-limit:enquiries",
                     window=FixedWindow(settings.rate_limit_per_ip, settings.rate_limit_window_seconds),
                     hash_key=settings.rate_limit_hash_key.get_secret_value().encode(),
                 ),
-                notifier=EnquiryNotifier(
-                    settings.smtp,
-                    NotificationBudget(
-                        redis,
-                        key="notification-budget:enquiries",
-                        window=FixedWindow(settings.notifications_per_hour, _SECONDS_PER_HOUR),
-                    ),
-                    session_factory,
+                purge_cadence=Cadence(_PURGE_INTERVAL_SECONDS),
+                notification_budget_policy=BudgetPolicy(
+                    key="notification-budget:enquiries",
+                    window=FixedWindow(settings.notifications_per_hour, _SECONDS_PER_HOUR),
                 ),
             )
             if (auth := settings.auth) is not None:

@@ -3,13 +3,14 @@ from collections.abc import AsyncIterator
 from typing import Annotated, cast
 
 from fastapi import Depends, HTTPException, Request, status
-from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.auth.jwks import SigningKeysUnavailableError
 from app.auth.verifier import InvalidTokenError, NotStaffError, StaffMember, StaffTokenVerifier
 from app.client_ip import client_identity
 from app.repositories.enquiries import EnquiryRepository
+from app.repositories.rate_limit_windows import RateLimitWindows
+from app.services.notification_budget import NotificationBudget
 from app.services.notifier import EnquiryNotifier
 from app.services.rate_limit import FixedWindowRateLimiter
 from app.state import AppState
@@ -31,12 +32,10 @@ async def get_engine(request: Request) -> AsyncEngine:
     return _app_state(request)["engine"]
 
 
-async def get_redis(request: Request) -> Redis:
-    return _app_state(request)["redis"]
-
-
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
-    async with _app_state(request)["session_factory"]() as session:
+    """Binds the request's session to one connection, so its transactions share it even without a client-side pool."""
+    state = _app_state(request)
+    async with state["engine"].connect() as connection, state["session_factory"](bind=connection) as session:
         yield session
 
 
@@ -56,12 +55,15 @@ async def get_client_identity(request: Request) -> str | None:
     return identity
 
 
-async def get_rate_limiter(request: Request) -> FixedWindowRateLimiter:
-    return _app_state(request)["rate_limiter"]
+async def get_rate_limiter(request: Request, session: SessionDep) -> FixedWindowRateLimiter:
+    state = _app_state(request)
+    return FixedWindowRateLimiter(RateLimitWindows(session), state["rate_limit_policy"], state["purge_cadence"])
 
 
-async def get_notifier(request: Request) -> EnquiryNotifier:
-    return _app_state(request)["notifier"]
+async def get_notifier(request: Request, session: SessionDep) -> EnquiryNotifier:
+    state = _app_state(request)
+    budget = NotificationBudget(session, state["notification_budget_policy"])
+    return EnquiryNotifier(state["settings"].smtp, budget, EnquiryRepository(session))
 
 
 async def get_staff_verifier(request: Request) -> StaffTokenVerifier:
@@ -101,7 +103,6 @@ async def require_staff(
 
 
 EngineDep = Annotated[AsyncEngine, Depends(get_engine)]
-RedisDep = Annotated[Redis, Depends(get_redis)]
 EnquiryRepositoryDep = Annotated[EnquiryRepository, Depends(get_enquiry_repository)]
 ClientIdentityDep = Annotated[str | None, Depends(get_client_identity)]
 RateLimiterDep = Annotated[FixedWindowRateLimiter, Depends(get_rate_limiter)]
