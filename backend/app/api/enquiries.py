@@ -12,7 +12,7 @@ from app.dependencies import (
     RateLimiterDep,
     require_json_body,
 )
-from app.problems import PROBLEM_RESPONSES
+from app.problems import problem_responses
 from app.schemas import EnquiryReceipt, EnquirySubmission
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/v1/enquiries", tags=["enquiries"])
     "",
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(require_json_body)],
-    responses=PROBLEM_RESPONSES,
+    responses=problem_responses(400, 413, 415, 422, 429),
 )
 async def submit_enquiry(
     submission: EnquirySubmission,

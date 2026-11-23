@@ -3,7 +3,8 @@
   "regions": ["sin1"],
   "services": {
     "frontend": {
-      "root": "frontend/"
+      "root": "frontend/",
+      "bindings": [{ "type": "service", "service": "backend", "format": "url", "env": "BACKEND_INTERNAL_URL" }]
     },
     "backend": {
       "root": "backend/",

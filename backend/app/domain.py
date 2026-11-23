@@ -22,3 +22,7 @@ class EnquiryStatus(StrEnum):
     NEW = "new"
     CONTACTED = "contacted"
     CLOSED = "closed"
+
+
+class EnquiryAction(StrEnum):
+    STATUS_CHANGED = "status_changed"

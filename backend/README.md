@@ -1,12 +1,18 @@
 # GameChanger Institute API
 
-Accepts enquiries from the website, stores them in PostgreSQL and emails each new one to the Institute's inbox.
+Accepts enquiries from the website, stores them in PostgreSQL and emails each new one to the Institute's inbox. Invited staff review and progress them through the admin API.
 
 | Endpoint | Purpose |
 | --- | --- |
 | `POST /v1/enquiries` | Submit an enquiry (`202 {"id", "received_at"}`, errors as `application/problem+json`) |
 | `GET /healthz` | Liveness, no dependencies |
 | `GET /readyz` | Readiness of PostgreSQL and Redis (`503` when either fails) |
+| `GET /v1/admin/enquiries` | Staff: list, newest first. `status`, `kind`, `q` (name, email or organisation), `limit` (1-100, default 25), `cursor` (the previous page's `next_cursor`) |
+| `GET /v1/admin/enquiries/summary` | Staff: totals by status and by kind |
+| `GET /v1/admin/enquiries/{id}` | Staff: every field plus status events, newest first |
+| `PATCH /v1/admin/enquiries/{id}` | Staff: `{"status", "expected_status", "note"?}`. `409` when the enquiry is no longer in `expected_status`; `422` when the status would not change |
+
+The admin endpoints exist only when `AUTH_ISSUER` is set; otherwise they return `404`.
 
 OpenAPI docs (`/docs`, `/openapi.json`) are served only when `ENVIRONMENT=development`.
 
@@ -58,6 +64,32 @@ Migrations connect with `DATABASE_URL_UNPOOLED` when it is set, otherwise `DATAB
 | `NOTIFY_TO` | unset | Required when `SMTP_HOST` is set |
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1` in the image | Read by uvicorn: proxies trusted to set `X-Forwarded-For` |
+| `AUTH_ISSUER` | unset | OIDC issuer of staff session tokens, exactly as in their `iss` claim (`https://<instance>.clerk.accounts.dev`). Unset disables the admin API. |
+| `AUTH_JWKS_URL` | `{AUTH_ISSUER}/.well-known/jwks.json` | Where the issuer publishes its signing keys. Must be https. |
+| `AUTH_AUTHORIZED_PARTIES` | required with `AUTH_ISSUER` | Comma-separated exact origins accepted in the token's `azp` claim, normally the staff console's origin |
+| `AUTH_STAFF_ROLES` | `admin,staff` | Values of the token's `role` claim that grant access |
+
+## Staff authentication
+
+The admin API accepts `Authorization: Bearer <session JWT>` from any OIDC provider that signs with RS256 and publishes a JWKS. With Clerk, add these claims to the session token template (Configure → Sessions → Customize session token):
+
+```json
+{
+  "role": "{{user.public_metadata.role}}",
+  "email": "{{user.primary_email_address}}"
+}
+```
+
+and set `role` to `admin` or `staff` in each invited member's public metadata. A token is accepted when:
+
+- its signature verifies against a key from the issuer's JWKS (RS256 only),
+- `iss` equals `AUTH_ISSUER`, `azp` is one of `AUTH_AUTHORIZED_PARTIES`, and `sub` is present,
+- `exp`, `nbf` and `iat` hold within a 10-second leeway,
+- `role` is one of `AUTH_STAFF_ROLES`. A missing role grants nothing.
+
+Missing, malformed, expired or foreign tokens get `401` with `WWW-Authenticate: Bearer`; valid tokens without a staff role get `403`; if the signing keys have never loaded, `503`. Keys are cached in memory, reloaded hourly or when a token names an unknown key (at most once a minute), and fetched with a 5-second timeout, so requests never wait on the provider once keys are held. Tokens are never logged; staff actions are logged with the actor's `sub`.
+
+The console calls the admin API server to server. CORS does not allow the `Authorization` header or `PATCH`, so browsers cannot call it directly.
 
 ## Deploy
 

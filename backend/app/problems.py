@@ -110,7 +110,9 @@ EXCEPTION_HANDLERS: Final[dict[int | type[Exception], Callable[[Request, Any], C
     RequestValidationError: _handle_validation_error,
 }
 
-PROBLEM_RESPONSES: Final[dict[int | str, dict[str, Any]]] = {
-    status: {"model": Problem, "content": {PROBLEM_MEDIA_TYPE: {}}, "description": HTTPStatus(status).phrase}
-    for status in (400, 413, 415, 422, 429)
-}
+
+def problem_responses(*statuses: int) -> dict[int | str, dict[str, Any]]:
+    return {
+        status: {"model": Problem, "content": {PROBLEM_MEDIA_TYPE: {}}, "description": HTTPStatus(status).phrase}
+        for status in statuses
+    }

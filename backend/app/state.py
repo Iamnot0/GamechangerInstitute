@@ -1,8 +1,9 @@
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.auth.verifier import StaffTokenVerifier
 from app.config import Settings
 from app.services.notifier import EnquiryNotifier
 from app.services.rate_limit import FixedWindowRateLimiter
@@ -17,3 +18,4 @@ class AppState(TypedDict):
     redis: Redis
     rate_limiter: FixedWindowRateLimiter
     notifier: EnquiryNotifier
+    staff_verifier: NotRequired[StaffTokenVerifier]

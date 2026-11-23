@@ -20,6 +20,8 @@ from app.database_url import asyncpg_database_url
 
 _ORIGIN = re.compile(r"https?://[^/\s]+")
 _HEADER_NAME = re.compile(r"[A-Za-z0-9-]+")
+_HTTPS_URL = re.compile(r"https://[^/\s]+(/\S*)?")
+_LOOPBACK_HTTP_URL = re.compile(r"http://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(/\S*)?")
 
 
 class Environment(StrEnum):
@@ -37,6 +39,14 @@ class SmtpConfig:
     timeout_seconds: float
     mail_from: str
     notify_to: str
+
+
+@dataclass(frozen=True, slots=True)
+class AuthConfig:
+    issuer: str
+    jwks_url: str
+    authorized_parties: frozenset[str]
+    staff_roles: frozenset[str]
 
 
 class Settings(BaseSettings):
@@ -62,25 +72,43 @@ class Settings(BaseSettings):
     mail_from: EmailStr | None = None
     notify_to: EmailStr | None = None
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    auth_issuer: str | None = None
+    auth_jwks_url: str | None = None
+    auth_authorized_parties: Annotated[tuple[str, ...], NoDecode] = ()
+    auth_staff_roles: Annotated[tuple[str, ...], NoDecode] = ("admin", "staff")
 
     @field_validator("database_url", mode="before")
     @classmethod
     def _use_asyncpg_driver(cls, value: object) -> object:
         return asyncpg_database_url(value) if isinstance(value, str) else value
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "auth_authorized_parties", "auth_staff_roles", mode="before")
     @classmethod
-    def _split_origins(cls, value: object) -> object:
+    def _split_comma_separated(cls, value: object) -> object:
         if isinstance(value, str):
-            return tuple(origin.strip() for origin in value.split(",") if origin.strip())
+            return tuple(item.strip() for item in value.split(",") if item.strip())
         return value
 
-    @field_validator("cors_origins")
+    @field_validator("cors_origins", "auth_authorized_parties")
     @classmethod
     def _require_exact_origins(cls, origins: tuple[str, ...]) -> tuple[str, ...]:
         if not all(_ORIGIN.fullmatch(origin) for origin in origins):
-            raise ValueError("CORS origins must be scheme://host[:port] without a path")
+            raise ValueError("Origins must be scheme://host[:port] without a path")
         return origins
+
+    @field_validator("auth_issuer")
+    @classmethod
+    def _require_https_issuer(cls, issuer: str | None) -> str | None:
+        if issuer is not None and (not _HTTPS_URL.fullmatch(issuer) or issuer.endswith("/")):
+            raise ValueError("AUTH_ISSUER must be an https URL without a trailing slash, matching the token's iss")
+        return issuer
+
+    @field_validator("auth_jwks_url")
+    @classmethod
+    def _require_secure_jwks_url(cls, url: str | None) -> str | None:
+        if url is not None and not (_HTTPS_URL.fullmatch(url) or _LOOPBACK_HTTP_URL.fullmatch(url)):
+            raise ValueError("AUTH_JWKS_URL must be an https URL")
+        return url
 
     @field_validator("trusted_client_ip_header")
     @classmethod
@@ -93,6 +121,12 @@ class Settings(BaseSettings):
     def _require_complete_smtp(self) -> Self:
         if self.smtp_host and not (self.mail_from and self.notify_to):
             raise ValueError("SMTP_HOST requires MAIL_FROM and NOTIFY_TO")
+        return self
+
+    @model_validator(mode="after")
+    def _require_complete_auth(self) -> Self:
+        if self.auth_issuer and not (self.auth_authorized_parties and self.auth_staff_roles):
+            raise ValueError("AUTH_ISSUER requires AUTH_AUTHORIZED_PARTIES and AUTH_STAFF_ROLES")
         return self
 
     @property
@@ -112,4 +146,15 @@ class Settings(BaseSettings):
             timeout_seconds=self.smtp_timeout_seconds,
             mail_from=self.mail_from,
             notify_to=self.notify_to,
+        )
+
+    @property
+    def auth(self) -> AuthConfig | None:
+        if self.auth_issuer is None:
+            return None
+        return AuthConfig(
+            issuer=self.auth_issuer,
+            jwks_url=self.auth_jwks_url or f"{self.auth_issuer}/.well-known/jwks.json",
+            authorized_parties=frozenset(self.auth_authorized_parties),
+            staff_roles=frozenset(self.auth_staff_roles),
         )

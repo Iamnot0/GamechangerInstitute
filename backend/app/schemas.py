@@ -1,13 +1,10 @@
-import re
 from typing import Annotated
 from uuid import UUID
 
-from email_validator import EmailNotValidError, validate_email
 from pydantic import (
     AfterValidator,
     AwareDatetime,
     BaseModel,
-    BeforeValidator,
     ConfigDict,
     Field,
     StrictBool,
@@ -19,48 +16,16 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from app.domain import EnquiryKind, RoleTransition
-
-_LINE_BREAKS_AND_CONTROLS = re.compile(r"[\x00-\x1f\x7f]")
-_CONTROLS_EXCEPT_WHITESPACE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
-
-
-def _single_line(value: str) -> str:
-    if _LINE_BREAKS_AND_CONTROLS.search(value):
-        raise PydanticCustomError("single_line", "Use a single line of plain text.")
-    return value
-
-
-def _plain_text(value: str) -> str:
-    if _CONTROLS_EXCEPT_WHITESPACE.search(value):
-        raise PydanticCustomError("plain_text", "Remove unsupported characters.")
-    return value
-
-
-def _normalised_email(value: str) -> str:
-    try:
-        return validate_email(value, check_deliverability=False).normalized.lower()
-    except EmailNotValidError:
-        raise PydanticCustomError("email", "Enter a valid email address.") from None
-
-
-def _blank_as_none(value: object) -> object:
-    if isinstance(value, str) and not value.strip():
-        return None
-    return value
-
-
-BlankAsNone = BeforeValidator(_blank_as_none)
+from app.validators import BlankAsNone, normalised_email, plain_text, single_line
 
 FullName = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=2, max_length=120), AfterValidator(_single_line)
+    str, StringConstraints(strip_whitespace=True, min_length=2, max_length=120), AfterValidator(single_line)
 ]
-Email = Annotated[str, StringConstraints(strip_whitespace=True, max_length=254), AfterValidator(_normalised_email)]
-OrganisationName = Annotated[
-    str, StringConstraints(strip_whitespace=True, max_length=160), AfterValidator(_single_line)
-]
-RoleTitle = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120), AfterValidator(_single_line)]
+Email = Annotated[str, StringConstraints(strip_whitespace=True, max_length=254), AfterValidator(normalised_email)]
+OrganisationName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=160), AfterValidator(single_line)]
+RoleTitle = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120), AfterValidator(single_line)]
 CohortSize = Annotated[StrictInt, Field(ge=1, le=500)]
-Message = Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000), AfterValidator(_plain_text)]
+Message = Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000), AfterValidator(plain_text)]
 
 
 class EnquirySubmission(BaseModel):
