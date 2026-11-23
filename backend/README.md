@@ -61,6 +61,7 @@ Migrations connect with `DATABASE_URL_UNPOOLED` when it is set, otherwise `DATAB
 | `NOTIFICATIONS_PER_HOUR` | `200` | Notification emails per hour across all clients. Past it, enquiries are still stored and acknowledged, but no email is sent and `notified_at` stays empty. |
 | `MAIL_FROM` | unset | Required when `SMTP_HOST` is set |
 | `NOTIFY_TO` | unset | Required when `SMTP_HOST` is set |
+| `API_ROOT_PATH` | empty | Public prefix stripped before routing. `/api` on Vercel, where `/api/*` routes to this service; internal calls without the prefix still match |
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1` in the image | Read by uvicorn: proxies trusted to set `X-Forwarded-For` |
 | `AUTH_ISSUER` | unset | OIDC issuer of staff session tokens, exactly as in their `iss` claim (`https://<instance>.clerk.accounts.dev`). Unset disables the admin API. |

@@ -17,6 +17,7 @@ from app.middleware import (
     REQUEST_ID_HEADER,
     BodySizeLimitMiddleware,
     RequestContextMiddleware,
+    RootPathMiddleware,
     SecurityHeadersMiddleware,
     UnhandledErrorMiddleware,
 )
@@ -71,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url="/openapi.json" if settings.is_development else None,
         exception_handlers=EXCEPTION_HANDLERS,
         middleware=[
+            Middleware(RootPathMiddleware, root_path=settings.api_root_path),
             Middleware(RequestContextMiddleware),
             Middleware(SecurityHeadersMiddleware),
             Middleware(

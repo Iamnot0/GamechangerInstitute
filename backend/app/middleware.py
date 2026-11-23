@@ -22,6 +22,23 @@ _SECURITY_HEADERS: Final = {
 }
 
 
+class RootPathMiddleware:
+    """Declares the public path prefix the platform routes to this service, as `uvicorn --root-path` would.
+
+    Starlette strips the root path before matching routes, so `/api/v1/...` from the edge and `/v1/...` from
+    private service-to-service calls reach the same handlers.
+    """
+
+    def __init__(self, app: ASGIApp, root_path: str) -> None:
+        self.app = app
+        self.root_path = root_path
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] in ("http", "websocket"):
+            scope["root_path"] = self.root_path
+        await self.app(scope, receive, send)
+
+
 class RequestContextMiddleware:
     """Binds a request id to the response and the logs, and writes one access log line per request."""
 

@@ -1,24 +1,37 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["sin1"],
+  "regions": [
+    "sin1"
+  ],
   "services": {
     "frontend": {
       "root": "frontend/",
-      "bindings": [{ "type": "service", "service": "backend", "format": "url", "env": "BACKEND_INTERNAL_URL" }]
+      "bindings": [
+        {
+          "type": "service",
+          "service": "backend",
+          "format": "url",
+          "env": "BACKEND_INTERNAL_URL"
+        }
+      ]
     },
     "backend": {
       "root": "backend/",
-      "entrypoint": "app.asgi:app",
-      "routes": [
-        {
-          "src": "/api/(.*)",
-          "transforms": [{ "type": "request.path", "op": "set", "args": "/$1" }]
-        }
-      ]
+      "entrypoint": "app.asgi:app"
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": { "service": "backend" } },
-    { "source": "/(.*)", "destination": { "service": "frontend" } }
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
   ]
 }

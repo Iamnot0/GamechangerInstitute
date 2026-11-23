@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     mail_from: EmailStr | None = None
     notify_to: EmailStr | None = None
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    api_root_path: str = Field(default="", description="Public prefix stripped before routing (/api on Vercel).")
     auth_issuer: str | None = None
     auth_jwks_url: str | None = None
     auth_authorized_parties: Annotated[tuple[str, ...], NoDecode] = ()
@@ -95,6 +96,13 @@ class Settings(BaseSettings):
         if not all(_ORIGIN.fullmatch(origin) for origin in origins):
             raise ValueError("Origins must be scheme://host[:port] without a path")
         return origins
+
+    @field_validator("api_root_path")
+    @classmethod
+    def _require_clean_root_path(cls, root_path: str) -> str:
+        if root_path and (not root_path.startswith("/") or root_path.endswith("/") or "//" in root_path):
+            raise ValueError("API_ROOT_PATH must be empty or a path like /api, without a trailing slash")
+        return root_path
 
     @field_validator("auth_issuer")
     @classmethod
