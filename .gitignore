@@ -1,0 +1,31 @@
+# Local-only workspace: tests, Playwright, docs, tooling. Never shipped.
+/development/
+/.remember/
+
+# Dependencies and builds
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+dist/
+build/
+.next/
+.turbo/
+coverage/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Local tool output
+.playwright-mcp/
+
+# Vercel
+.vercel/

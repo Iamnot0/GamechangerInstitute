@@ -1,0 +1,17 @@
+# Local-only workspace and secrets: never uploaded.
+development/
+.remember/
+.playwright-mcp/
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build output and dependencies are rebuilt on Vercel.
+**/node_modules/
+**/.next/
+frontend/out/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
