@@ -1,17 +1,29 @@
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Final
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
-from app.dependencies import ClientIpDep, EnquiryRepositoryDep, NotifierDep, RateLimiterDep, require_json_body
+from app.dependencies import (
+    ClientIdentityDep,
+    EnquiryRepositoryDep,
+    NotifierDep,
+    RateLimiterDep,
+    require_json_body,
+)
 from app.problems import PROBLEM_RESPONSES
 from app.schemas import EnquiryReceipt, EnquirySubmission
+from app.services.rate_limit import RateLimitScope
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/enquiries", tags=["enquiries"])
+
+_RATE_LIMITED_DETAILS: Final = {
+    RateLimitScope.CLIENT: "Too many enquiries from this network. Please try again later.",
+    RateLimitScope.GLOBAL: "We are receiving an unusually high number of enquiries. Please try again later.",
+}
 
 
 @router.post(
@@ -22,7 +34,7 @@ router = APIRouter(prefix="/v1/enquiries", tags=["enquiries"])
 )
 async def submit_enquiry(
     submission: EnquirySubmission,
-    client_ip: ClientIpDep,
+    client_identity: ClientIdentityDep,
     repository: EnquiryRepositoryDep,
     rate_limiter: RateLimiterDep,
     notifier: NotifierDep,
@@ -32,11 +44,11 @@ async def submit_enquiry(
         logger.info("honeypot")
         return EnquiryReceipt(id=uuid.uuid7(), received_at=datetime.now(UTC))
 
-    decision = await rate_limiter.hit(client_ip)
-    if not decision.allowed:
+    decision = await rate_limiter.hit(client_identity)
+    if decision.exceeded is not None:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many enquiries from this network. Please try again later.",
+            detail=_RATE_LIMITED_DETAILS[decision.exceeded],
             headers={"Retry-After": str(decision.retry_after_seconds)},
         )
 

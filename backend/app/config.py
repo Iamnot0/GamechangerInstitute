@@ -40,7 +40,7 @@ class SmtpConfig:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(frozen=True, env_ignore_empty=True)
+    model_config = SettingsConfigDict(frozen=True, env_ignore_empty=True, hide_input_in_errors=True)
 
     environment: Environment = Environment.DEVELOPMENT
     database_url: PostgresDsn
@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     trusted_client_ip_header: str | None = None
     rate_limit_per_ip: PositiveInt = 5
     rate_limit_window_seconds: PositiveInt = 600
+    rate_limit_global_per_hour: PositiveInt = 200
     rate_limit_hash_key: Annotated[SecretStr, Field(min_length=32)]
     smtp_host: str | None = None
     smtp_port: int = Field(default=587, ge=1, le=65535)
@@ -77,9 +78,8 @@ class Settings(BaseSettings):
     @field_validator("cors_origins")
     @classmethod
     def _require_exact_origins(cls, origins: tuple[str, ...]) -> tuple[str, ...]:
-        invalid = [origin for origin in origins if not _ORIGIN.fullmatch(origin)]
-        if invalid:
-            raise ValueError(f"CORS origins must be scheme://host[:port] without a path: {invalid}")
+        if not all(_ORIGIN.fullmatch(origin) for origin in origins):
+            raise ValueError("CORS origins must be scheme://host[:port] without a path")
         return origins
 
     @field_validator("trusted_client_ip_header")

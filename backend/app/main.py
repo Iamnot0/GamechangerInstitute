@@ -21,10 +21,11 @@ from app.middleware import (
 from app.problems import EXCEPTION_HANDLERS
 from app.redis_client import create_redis_client
 from app.services.notifier import EnquiryNotifier
-from app.services.rate_limit import FixedWindowRateLimiter
+from app.services.rate_limit import FixedWindow, FixedWindowRateLimiter
 from app.state import AppState
 
 _MAX_REQUEST_BODY_BYTES: Final = 16 * 1024
+_SECONDS_PER_HOUR: Final = 3600
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -45,8 +46,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 rate_limiter=FixedWindowRateLimiter(
                     redis,
                     namespace="rate-limit:enquiries",
-                    limit=settings.rate_limit_per_ip,
-                    window_seconds=settings.rate_limit_window_seconds,
+                    per_client=FixedWindow(settings.rate_limit_per_ip, settings.rate_limit_window_seconds),
+                    overall=FixedWindow(settings.rate_limit_global_per_hour, _SECONDS_PER_HOUR),
                     hash_key=settings.rate_limit_hash_key.get_secret_value().encode(),
                 ),
                 notifier=EnquiryNotifier(settings.smtp, session_factory),

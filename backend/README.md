@@ -45,8 +45,9 @@ Migrations connect with `DATABASE_URL_UNPOOLED` when it is set, otherwise `DATAB
 | `REDIS_URL` | required | `redis://host:6379/0`, or `rediss://` for TLS with certificate verification |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated exact origins, no paths or wildcards |
 | `TRUSTED_CLIENT_IP_HEADER` | unset | Header holding the client IP, set by an edge that overwrites any client-supplied value (`x-real-ip` on Vercel). Unset uses the peer address from uvicorn. |
-| `RATE_LIMIT_PER_IP` | `5` | Valid submissions per client IP per window (honeypot hits are not counted) |
+| `RATE_LIMIT_PER_IP` | `5` | Valid submissions per client per window (honeypot hits are not counted). A client is an IPv4 address or an IPv6 /64; requests without a usable IP share one bucket. |
 | `RATE_LIMIT_WINDOW_SECONDS` | `600` | Window length |
+| `RATE_LIMIT_GLOBAL_PER_HOUR` | `200` | Submissions accepted per hour across all clients, which caps notification emails during a distributed flood. Requests already over their client limit do not count. |
 | `RATE_LIMIT_HASH_KEY` | required | Secret, at least 32 characters. Keys the HMAC-SHA256 that identifies a client IP in Redis. The app refuses to start without it, in every environment. Rotating it resets open windows. |
 | `SMTP_HOST` | unset | Unset disables notification emails |
 | `SMTP_PORT` | `587` | |
@@ -83,4 +84,6 @@ docker run -d -p 8000:8000 --env-file prod.env gci-backend
 ### Everywhere
 
 - Logs are JSON lines on stdout. They carry request id, enquiry id, kind, status and latency, never names, emails, messages or IPs. Uvicorn's own access log is discarded because it records client IPs.
-- Redis outages never block submissions: the rate limiter fails open and logs a warning. PostgreSQL is the source of truth; an enquiry whose email failed or timed out keeps `notified_at` empty.
+- Rate limiting runs two fixed windows in Redis: per client, then global. Requests without a usable client IP are limited together in an `unknown` bucket and logged as a warning.
+- Redis outages never block submissions: both windows fail open and log a warning. This is a deliberate availability trade-off; during an outage, submissions and emails are unthrottled. PostgreSQL is the source of truth; an enquiry whose email failed or timed out keeps `notified_at` empty.
+- Configuration errors never echo the values supplied, so a failed start cannot leak secrets into logs.

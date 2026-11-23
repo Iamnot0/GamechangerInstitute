@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, Request
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
-from app.client_ip import client_ip
+from app.client_ip import client_identity
 from app.repositories.enquiries import EnquiryRepository
 from app.services.notifier import EnquiryNotifier
 from app.services.rate_limit import FixedWindowRateLimiter
@@ -42,8 +42,8 @@ async def get_enquiry_repository(session: SessionDep) -> EnquiryRepository:
     return EnquiryRepository(session)
 
 
-async def get_client_ip(request: Request) -> str | None:
-    return client_ip(request, _app_state(request)["settings"].trusted_client_ip_header)
+async def get_client_identity(request: Request) -> str | None:
+    return client_identity(request, _app_state(request)["settings"].trusted_client_ip_header)
 
 
 async def get_rate_limiter(request: Request) -> FixedWindowRateLimiter:
@@ -57,6 +57,6 @@ async def get_notifier(request: Request) -> EnquiryNotifier:
 EngineDep = Annotated[AsyncEngine, Depends(get_engine)]
 RedisDep = Annotated[Redis, Depends(get_redis)]
 EnquiryRepositoryDep = Annotated[EnquiryRepository, Depends(get_enquiry_repository)]
-ClientIpDep = Annotated[str | None, Depends(get_client_ip)]
+ClientIdentityDep = Annotated[str | None, Depends(get_client_identity)]
 RateLimiterDep = Annotated[FixedWindowRateLimiter, Depends(get_rate_limiter)]
 NotifierDep = Annotated[EnquiryNotifier, Depends(get_notifier)]

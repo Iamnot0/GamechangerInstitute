@@ -64,7 +64,7 @@ Message = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200
 
 
 class EnquirySubmission(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
 
     kind: EnquiryKind
     full_name: FullName

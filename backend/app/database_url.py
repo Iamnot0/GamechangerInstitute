@@ -15,7 +15,7 @@ def asyncpg_database_url(url: str) -> str:
     except ArgumentError as exc:
         raise ValueError("DATABASE_URL is not a valid URL") from exc
     if parsed.drivername not in _POSTGRES_DRIVERS:
-        raise ValueError(f"DATABASE_URL must be a PostgreSQL URL, not {parsed.drivername!r}")
+        raise ValueError("DATABASE_URL must be a PostgreSQL URL")
 
     query = {key: value for key, value in parsed.query.items() if key not in _LIBPQ_ONLY_PARAMETERS}
     if "sslmode" in query:
