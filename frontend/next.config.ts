@@ -41,7 +41,8 @@ const baseHeaders = [
 const siteCsp = contentSecurityPolicy();
 const staffCsp = contentSecurityPolicy({
   script: ` ${clerkOrigins} ${clerkChallenge}`,
-  connect: ` ${clerkOrigins} https://clerk-telemetry.com`,
+  // Clerk's bot protection probes *.client.protect.clerk.com on non-default ports (8443, 18443).
+  connect: ` ${clerkOrigins} https://*.clerk.com:*`,
   img: " https://img.clerk.com",
   frame: clerkChallenge,
   worker: " blob:",
