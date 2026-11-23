@@ -8,5 +8,5 @@ export default clerkMiddleware(async (auth, request) => {
 
 // Clerk runs only on the staff console and its sign-in page; the public site never loads it.
 export const config = {
-  matcher: ["/admin/:path*", "/sign-in/:path*"],
+  matcher: ["/admin/:path*", "/sign-in/:path*", "/sign-up/:path*"],
 };

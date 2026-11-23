@@ -55,7 +55,7 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   async headers() {
     // Later entries override earlier ones for the same header key, so staff paths replace the site CSP.
-    const staffPaths = ["/admin/:path*", "/sign-in/:path*"];
+    const staffPaths = ["/admin/:path*", "/sign-in/:path*", "/sign-up/:path*"];
     return [
       { source: "/:path*", headers: [...baseHeaders, { key: "Content-Security-Policy", value: siteCsp }] },
       ...staffPaths.map((source) => ({
