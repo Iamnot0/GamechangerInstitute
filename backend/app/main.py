@@ -20,8 +20,10 @@ from app.middleware import (
 )
 from app.problems import EXCEPTION_HANDLERS
 from app.redis_client import create_redis_client
+from app.services.fixed_window import FixedWindow
+from app.services.notification_budget import NotificationBudget
 from app.services.notifier import EnquiryNotifier
-from app.services.rate_limit import FixedWindow, FixedWindowRateLimiter
+from app.services.rate_limit import FixedWindowRateLimiter
 from app.state import AppState
 
 _MAX_REQUEST_BODY_BYTES: Final = 16 * 1024
@@ -46,11 +48,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 rate_limiter=FixedWindowRateLimiter(
                     redis,
                     namespace="rate-limit:enquiries",
-                    per_client=FixedWindow(settings.rate_limit_per_ip, settings.rate_limit_window_seconds),
-                    overall=FixedWindow(settings.rate_limit_global_per_hour, _SECONDS_PER_HOUR),
+                    window=FixedWindow(settings.rate_limit_per_ip, settings.rate_limit_window_seconds),
                     hash_key=settings.rate_limit_hash_key.get_secret_value().encode(),
                 ),
-                notifier=EnquiryNotifier(settings.smtp, session_factory),
+                notifier=EnquiryNotifier(
+                    settings.smtp,
+                    NotificationBudget(
+                        redis,
+                        key="notification-budget:enquiries",
+                        window=FixedWindow(settings.notifications_per_hour, _SECONDS_PER_HOUR),
+                    ),
+                    session_factory,
+                ),
             )
         finally:
             await redis.aclose()

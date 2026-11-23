@@ -51,7 +51,6 @@ class Settings(BaseSettings):
     trusted_client_ip_header: str | None = None
     rate_limit_per_ip: PositiveInt = 5
     rate_limit_window_seconds: PositiveInt = 600
-    rate_limit_global_per_hour: PositiveInt = 200
     rate_limit_hash_key: Annotated[SecretStr, Field(min_length=32)]
     smtp_host: str | None = None
     smtp_port: int = Field(default=587, ge=1, le=65535)
@@ -59,6 +58,7 @@ class Settings(BaseSettings):
     smtp_password: SecretStr | None = None
     smtp_starttls: bool = True
     smtp_timeout_seconds: PositiveFloat = 10
+    notifications_per_hour: PositiveInt = 200
     mail_from: EmailStr | None = None
     notify_to: EmailStr | None = None
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"

@@ -1,7 +1,8 @@
+import logging
 from collections.abc import AsyncIterator
 from typing import Annotated, cast
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -10,6 +11,8 @@ from app.repositories.enquiries import EnquiryRepository
 from app.services.notifier import EnquiryNotifier
 from app.services.rate_limit import FixedWindowRateLimiter
 from app.state import AppState
+
+logger = logging.getLogger(__name__)
 
 
 async def require_json_body(request: Request) -> None:
@@ -43,7 +46,12 @@ async def get_enquiry_repository(session: SessionDep) -> EnquiryRepository:
 
 
 async def get_client_identity(request: Request) -> str | None:
-    return client_identity(request, _app_state(request)["settings"].trusted_client_ip_header)
+    trusted_header = _app_state(request)["settings"].trusted_client_ip_header
+    identity = client_identity(request, trusted_header)
+    if identity is None and trusted_header is not None:
+        logger.warning("request rejected: trusted client ip header missing or invalid")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="We could not verify your request.")
+    return identity
 
 
 async def get_rate_limiter(request: Request) -> FixedWindowRateLimiter:

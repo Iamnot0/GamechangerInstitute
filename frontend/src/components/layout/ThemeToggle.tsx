@@ -26,6 +26,23 @@ function revealFrom(button: HTMLElement, update: () => void) {
   });
 }
 
+function MoonIcon() {
+  return (
+    <svg className="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M20.6 14.6A8.6 8.6 0 0 1 9.4 3.4a8.6 8.6 0 1 0 11.2 11.2Z" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg className="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="4.4" />
+      <path d="M12 1.8v2.4M12 19.8v2.4M1.8 12h2.4M19.8 12h2.4M4.8 4.8l1.7 1.7M17.5 17.5l1.7 1.7M4.8 19.2l1.7-1.7M17.5 6.5l1.7-1.7" />
+    </svg>
+  );
+}
+
 export function ThemeToggle() {
   const theme = useSyncExternalStore<Theme>(subscribeToTheme, readTheme, () => "light");
   const next: Theme = theme === "dark" ? "light" : "dark";
@@ -42,7 +59,8 @@ export function ThemeToggle() {
       aria-label={`Switch to ${next} theme`}
       onClick={onClick}
     >
-      {theme === "dark" ? "Light" : "Dark"}
+      <MoonIcon />
+      <SunIcon />
     </button>
   );
 }

@@ -44,16 +44,16 @@ Migrations connect with `DATABASE_URL_UNPOOLED` when it is set, otherwise `DATAB
 | `DATABASE_MAX_OVERFLOW` | `3` | Extra connections beyond the pool under load |
 | `REDIS_URL` | required | `redis://host:6379/0`, or `rediss://` for TLS with certificate verification |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated exact origins, no paths or wildcards |
-| `TRUSTED_CLIENT_IP_HEADER` | unset | Header holding the client IP, set by an edge that overwrites any client-supplied value (`x-real-ip` on Vercel). Unset uses the peer address from uvicorn. |
-| `RATE_LIMIT_PER_IP` | `5` | Valid submissions per client per window (honeypot hits are not counted). A client is an IPv4 address or an IPv6 /64; requests without a usable IP share one bucket. |
+| `TRUSTED_CLIENT_IP_HEADER` | unset | Header holding the client IP, set by an edge that overwrites any client-supplied value (`x-real-ip` on Vercel). A submission without a valid value is rejected with `400`, since it did not come through the edge. Unset uses the peer address from uvicorn. |
+| `RATE_LIMIT_PER_IP` | `5` | Valid submissions per client per window (honeypot hits are not counted). A client is an IPv4 address or an IPv6 /64. |
 | `RATE_LIMIT_WINDOW_SECONDS` | `600` | Window length |
-| `RATE_LIMIT_GLOBAL_PER_HOUR` | `200` | Submissions accepted per hour across all clients, which caps notification emails during a distributed flood. Requests already over their client limit do not count. |
 | `RATE_LIMIT_HASH_KEY` | required | Secret, at least 32 characters. Keys the HMAC-SHA256 that identifies a client IP in Redis. The app refuses to start without it, in every environment. Rotating it resets open windows. |
 | `SMTP_HOST` | unset | Unset disables notification emails |
 | `SMTP_PORT` | `587` | |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | unset | Sent only when set |
 | `SMTP_STARTTLS` | `true` | Implicit TLS (port 465) is not supported; use STARTTLS |
 | `SMTP_TIMEOUT_SECONDS` | `10` | Upper bound on sending one notification; the submission response waits for it |
+| `NOTIFICATIONS_PER_HOUR` | `200` | Notification emails per hour across all clients. Past it, enquiries are still stored and acknowledged, but no email is sent and `notified_at` stays empty. |
 | `MAIL_FROM` | unset | Required when `SMTP_HOST` is set |
 | `NOTIFY_TO` | unset | Required when `SMTP_HOST` is set |
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
@@ -84,6 +84,7 @@ docker run -d -p 8000:8000 --env-file prod.env gci-backend
 ### Everywhere
 
 - Logs are JSON lines on stdout. They carry request id, enquiry id, kind, status and latency, never names, emails, messages or IPs. Uvicorn's own access log is discarded because it records client IPs.
-- Rate limiting runs two fixed windows in Redis: per client, then global. Requests without a usable client IP are limited together in an `unknown` bucket and logged as a warning.
-- Redis outages never block submissions: both windows fail open and log a warning. This is a deliberate availability trade-off; during an outage, submissions and emails are unthrottled. PostgreSQL is the source of truth; an enquiry whose email failed or timed out keeps `notified_at` empty.
+- Each client gets a fixed window in Redis. Without a trusted header, a peer with no usable IP (which uvicorn does not produce over TCP) is limited in a shared `unknown` bucket and logged as a warning.
+- No global limit ever rejects a submission, so a botnet cannot lock legitimate visitors out. The hourly notification budget protects the inbox instead: enquiries past it are stored and logged as `notification budget exceeded`, and rows with an empty `notified_at` are the ones to review.
+- Redis outages never block submissions or emails: the client limit and the notification budget both fail open and log a warning. This is a deliberate availability trade-off; during an outage, submissions and emails are unthrottled. PostgreSQL is the source of truth; an enquiry whose email failed, timed out or exceeded the budget keeps `notified_at` empty.
 - Configuration errors never echo the values supplied, so a failed start cannot leak secrets into logs.

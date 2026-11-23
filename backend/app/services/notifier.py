@@ -13,6 +13,7 @@ from app.config import SmtpConfig
 from app.domain import EnquiryKind, RoleTransition
 from app.models import Enquiry
 from app.repositories.enquiries import EnquiryRepository
+from app.services.notification_budget import NotificationBudget
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +34,28 @@ _ROLE_TRANSITION_LABELS: Final = {
 
 
 class EnquiryNotifier:
-    """Emails each new enquiry to the Institute's inbox and records the delivery on the enquiry."""
+    """Emails each new enquiry to the Institute's inbox, within the hourly budget, and records the delivery.
 
-    def __init__(self, smtp: SmtpConfig | None, session_factory: async_sessionmaker[AsyncSession]) -> None:
+    Enquiries left unsent, whether over budget or after a failure, keep notified_at empty for the team to review.
+    """
+
+    def __init__(
+        self,
+        smtp: SmtpConfig | None,
+        budget: NotificationBudget,
+        session_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
         self._smtp = smtp
+        self._budget = budget
         self._session_factory = session_factory
 
     async def notify(self, enquiry: Enquiry) -> None:
         log_context = {"enquiry_id": str(enquiry.id)}
         if self._smtp is None:
             logger.info("notification skipped: smtp not configured", extra=log_context)
+            return
+        if not await self._budget.spend():
+            logger.warning("notification budget exceeded", extra=log_context)
             return
 
         try:
