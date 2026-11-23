@@ -27,10 +27,15 @@ export function SiteFooter() {
           </ul>
         </nav>
 
-        <p className="site-footer__legal">
-          © {year} {site.name}. The Leadership Transformation Programme is ICF-informed. It is not accredited or endorsed by
-          the World Health Organization.
-        </p>
+        <div className="site-footer__legal">
+          <p>
+            The Leadership Transformation Programme is ICF-informed. It is not accredited or endorsed by the World Health
+            Organization.
+          </p>
+          <p>
+            © {year} {site.name}.
+          </p>
+        </div>
       </div>
     </footer>
   );

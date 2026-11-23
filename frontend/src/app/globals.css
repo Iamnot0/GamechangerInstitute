@@ -17,7 +17,8 @@
    10. Institute sections
    11. Register and forms
    12. Legal and not found
-   13. Motion
+   13. Staff console
+   14. Motion
 */
 
 @import "tailwindcss" source(none);
@@ -663,7 +664,7 @@
   }
 
   .site-footer__legal {
-    @apply border-t border-pine pt-8 text-sm;
+    @apply grid justify-items-center gap-2 border-t border-pine pt-8 text-center text-sm;
 
     @variant md {
       @apply col-span-12;
@@ -2660,9 +2661,315 @@
   .not-found__body {
     @apply text-lede text-muted;
   }
+
+  /* 13. Staff console ----------------------------------------------------- */
+
+  .staff-sign-in {
+    @apply grid min-h-dvh place-items-center bg-canvas-alt px-5 py-16;
+  }
+
+  .staff-sign-in__inner {
+    @apply grid w-full max-w-md justify-items-center gap-4 text-center;
+  }
+
+  .staff-sign-in__title {
+    @apply mt-4 text-title;
+  }
+
+  .staff-sign-in__lede {
+    @apply mb-4 text-base text-muted;
+  }
+
+  .admin-header {
+    @apply sticky top-0 z-40 border-b border-line bg-canvas;
+  }
+
+  .admin-header__inner {
+    @apply mx-auto flex w-full flex-wrap items-center gap-x-8 gap-y-2 py-3;
+    max-width: var(--shell-max);
+    padding-inline: var(--shell-gutter);
+  }
+
+  .admin-header__brand {
+    @apply flex items-center gap-4;
+  }
+
+  .admin-header__label {
+    @apply border-l border-line-strong pl-4 text-sm font-semibold text-muted;
+  }
+
+  .admin-header__nav {
+    @apply flex-1;
+  }
+
+  .admin-header__link {
+    @apply inline-flex min-h-11 items-center font-semibold text-fg no-underline;
+  }
+
+  .admin-header__account {
+    @apply flex items-center gap-3;
+  }
+
+  .admin-header__email {
+    @apply hidden text-sm text-muted;
+
+    @variant md {
+      @apply inline;
+    }
+  }
+
+  .admin {
+    @apply mx-auto w-full py-10;
+    max-width: var(--shell-max);
+    padding-inline: var(--shell-gutter);
+  }
+
+  .admin-page {
+    @apply grid gap-8;
+  }
+
+  .admin-page__header {
+    @apply grid gap-2;
+  }
+
+  .admin-page__title {
+    @apply text-headline;
+  }
+
+  .admin-page__lede {
+    @apply text-base text-muted;
+  }
+
+  .admin-section__title {
+    @apply mb-3 text-2xl;
+  }
+
+  .admin-loading {
+    @apply py-16 text-lg text-muted;
+  }
+
+  .admin-state {
+    @apply grid max-w-2xl justify-items-start gap-4 py-12;
+  }
+
+  .admin-state--inline {
+    @apply border-y border-line py-10;
+  }
+
+  .admin-state__title {
+    @apply font-display text-title;
+  }
+
+  .admin-state__body {
+    @apply text-base text-muted;
+  }
+
+  .status-tabs__list {
+    @apply flex flex-wrap gap-2 border-b border-line;
+  }
+
+  .status-tabs__tab {
+    @apply -mb-px inline-flex min-h-11 items-center gap-2 border-b-2 border-transparent px-3 font-semibold text-muted no-underline;
+
+    &:hover {
+      @apply text-fg;
+    }
+
+    &[aria-current="page"] {
+      @apply border-terracotta text-fg;
+    }
+  }
+
+  .status-tabs__count {
+    @apply bg-canvas-tint px-2 py-0.5 text-sm text-fg;
+    border-radius: var(--radius-control);
+  }
+
+  .admin-filters {
+    @apply grid items-end gap-4;
+
+    @variant md {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+    }
+  }
+
+  .admin-filters__field {
+    @apply grid gap-2;
+  }
+
+  .admin-filters__actions {
+    @apply flex items-center gap-4;
+  }
+
+  .admin-table__table {
+    @apply w-full border-collapse text-left;
+
+    thead th {
+      @apply border-b-2 border-strong pb-3 pr-6 text-sm font-semibold text-muted;
+    }
+
+    tbody th,
+    tbody td {
+      @apply border-b border-line py-4 pr-6 align-top text-base font-normal;
+    }
+
+    @variant max-md {
+      thead {
+        @apply sr-only;
+      }
+
+      tbody tr {
+        @apply block border-b border-line py-3;
+      }
+
+      tbody th,
+      tbody td {
+        @apply block border-0 py-1 pr-0;
+      }
+
+      tbody td::before {
+        content: attr(data-label);
+        @apply block text-xs font-semibold text-muted;
+      }
+    }
+  }
+
+  .admin-table__name {
+    @apply block font-semibold text-fg;
+  }
+
+  .admin-table__email {
+    @apply block text-sm text-muted;
+  }
+
+  .admin-table__paging {
+    @apply mt-6 flex items-center justify-end gap-6;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-1 text-sm font-semibold;
+    border-radius: var(--radius-control);
+  }
+
+  .status-badge--new {
+    @apply bg-accent-warm text-canvas;
+  }
+
+  .status-badge--contacted {
+    @apply bg-canvas-tint text-fg;
+    box-shadow: inset 0 0 0 1px var(--color-line-strong);
+  }
+
+  .status-badge--closed {
+    @apply bg-canvas-alt text-muted;
+    box-shadow: inset 0 0 0 1px var(--color-line);
+  }
+
+  .enquiry__header {
+    @apply flex flex-wrap items-center gap-4;
+  }
+
+  .enquiry__layout {
+    @apply grid gap-10;
+
+    @variant lg {
+      @apply grid-cols-12 gap-x-12;
+    }
+  }
+
+  .enquiry__main {
+    @apply grid content-start gap-10;
+
+    @variant lg {
+      @apply col-span-7;
+    }
+  }
+
+  .enquiry__side {
+    @apply grid content-start gap-10;
+
+    @variant lg {
+      @apply col-span-5;
+    }
+  }
+
+  .enquiry__panel {
+    @apply border border-line-strong bg-canvas p-6;
+    border-radius: var(--radius-surface);
+  }
+
+  .enquiry__message {
+    @apply whitespace-pre-line text-lg;
+  }
+
+  .enquiry-facts {
+    @apply grid border-t border-line;
+  }
+
+  .enquiry-facts__row {
+    @apply grid gap-1 border-b border-line py-3;
+
+    @variant sm {
+      @apply grid-cols-[11rem_1fr] gap-4;
+    }
+
+    dt {
+      @apply text-sm font-semibold text-muted;
+    }
+
+    dd {
+      @apply text-base;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .status-form {
+    @apply grid gap-5;
+  }
+
+  .status-form__choices {
+    @apply grid gap-2;
+  }
+
+  .status-form__choice {
+    @apply flex min-h-11 cursor-pointer items-center gap-3 text-base;
+
+    input {
+      @apply size-5 accent-strong;
+    }
+  }
+
+  .status-form__saved {
+    @apply text-sm font-semibold text-accent;
+  }
+
+  .event-timeline__list {
+    @apply grid border-l-2 border-line-strong pl-5;
+  }
+
+  .event-timeline__item {
+    @apply relative grid gap-1 pb-6;
+
+    &::before {
+      content: "";
+      @apply absolute top-1.5 -left-[1.6875rem] size-3 rounded-full border-2 border-canvas bg-strong;
+    }
+  }
+
+  .event-timeline__what {
+    @apply font-semibold;
+  }
+
+  .event-timeline__meta {
+    @apply text-sm text-muted;
+  }
+
+  .event-timeline__note {
+    @apply text-base;
+  }
 }
 
-/* 13. Motion ---------------------------------------------------------------
+/* 14. Motion ---------------------------------------------------------------
    Theme switch: a circular reveal from the toggle (View Transitions, driven by
    ThemeToggle). Hero: words rise in on load, then the hero recedes in depth as
    it scrolls away. Sections enter in 3D, scrubbed to scroll. Signature: the
