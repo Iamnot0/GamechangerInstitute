@@ -2,19 +2,15 @@ import "server-only";
 import { auth } from "@clerk/nextjs/server";
 import type {
   AdminPost,
-  BlockDetail,
-  BlockSummary,
   EnquiryDetail,
   EnquiryFilters,
   EnquiryPage,
   EnquiryStatus,
   EnquirySummary,
-  Media,
-  MediaKind,
-  NewImage,
+  NewPhoto,
   PostFields,
+  PostPhoto,
 } from "@/lib/admin-types";
-import type { BlockKey } from "@/lib/site-content";
 
 // On Vercel the frontend reaches the API privately through the service binding; locally, uvicorn.
 const apiBaseUrl = process.env.BACKEND_INTERNAL_URL ?? process.env.ADMIN_API_URL ?? "http://localhost:8000";
@@ -88,44 +84,9 @@ export function updateEnquiryStatus(
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
 const id = encodeURIComponent;
 
-export async function listMedia(kind?: MediaKind): Promise<Media[]> {
-  const items: Media[] = [];
-  let cursor: string | null = null;
-  do {
-    const query = new URLSearchParams({ limit: "100" });
-    if (kind) query.set("kind", kind);
-    if (cursor) query.set("cursor", cursor);
-    const page: { items: Media[]; next_cursor: string | null } = await request(`/v1/admin/media?${query}`);
-    items.push(...page.items);
-    cursor = page.next_cursor;
-  } while (cursor && items.length < 500);
-  return items;
-}
+export const createPhoto = (photo: NewPhoto) => request<PostPhoto>("/v1/admin/photos", json("POST", photo));
 
-export const createImage = (image: NewImage) => request<Media>("/v1/admin/media", json("POST", { kind: "image", ...image }));
-
-export const createVideo = (video: { youtube_url: string; title: string }) =>
-  request<Media>("/v1/admin/media", json("POST", { kind: "video", ...video }));
-
-export const updateMedia = (mediaId: string, change: { alt?: string; title?: string }) =>
-  request<Media>(`/v1/admin/media/${id(mediaId)}`, json("PATCH", change));
-
-export const deleteMedia = (mediaId: string) => request<void>(`/v1/admin/media/${id(mediaId)}`, { method: "DELETE" });
-
-export async function listBlocks(): Promise<BlockSummary[]> {
-  return (await request<{ items: BlockSummary[] }>("/v1/admin/content")).items;
-}
-
-export const getBlock = (key: BlockKey) => request<BlockDetail>(`/v1/admin/content/${id(key)}`);
-
-export const saveBlockDraft = (key: BlockKey, data: unknown, expectedVersion: number) =>
-  request<BlockDetail>(`/v1/admin/content/${id(key)}`, json("PUT", { data, expected_version: expectedVersion }));
-
-export const publishBlock = (key: BlockKey, expectedVersion: number) =>
-  request<BlockDetail>(`/v1/admin/content/${id(key)}/publish`, json("POST", { expected_version: expectedVersion }));
-
-export const discardBlockDraft = (key: BlockKey, expectedVersion: number) =>
-  request<BlockDetail>(`/v1/admin/content/${id(key)}/draft`, json("DELETE", { expected_version: expectedVersion }));
+export const deletePhoto = (photoId: string) => request<void>(`/v1/admin/photos/${id(photoId)}`, { method: "DELETE" });
 
 export async function listPosts(): Promise<AdminPost[]> {
   return (await request<{ items: AdminPost[] }>("/v1/admin/posts?limit=100")).items;

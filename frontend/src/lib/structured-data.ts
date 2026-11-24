@@ -1,6 +1,6 @@
 import { founder } from "@/content/institute";
 import { programmeName, site } from "@/content/site";
-import type { Post } from "@/lib/site-content";
+import type { Post } from "@/lib/news";
 
 const absolute = (path: string) => new URL(path, site.url).toString();
 const organisationId = absolute("/#organisation");
@@ -52,9 +52,8 @@ export const article = (post: Post) => ({
   "@context": "https://schema.org",
   "@type": "Article",
   headline: post.title,
-  description: post.summary,
   datePublished: post.published_at,
   url: absolute(`/news/${post.slug}/`),
-  ...(post.cover ? { image: absolute(post.cover.src) } : {}),
+  ...(post.photos[0] ? { image: absolute(post.photos[0].src) } : {}),
   publisher: { "@id": organisationId },
 });

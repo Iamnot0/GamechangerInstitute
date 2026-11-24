@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { site } from "@/content/site";
-import { getPosts } from "@/lib/site-content";
+import { getPosts } from "@/lib/news";
 
 /** Date each page's content last changed. Update the entry when the page's copy changes. */
 const routes = {

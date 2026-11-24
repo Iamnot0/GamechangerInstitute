@@ -7,8 +7,6 @@ type AdminHeaderProps = { email: string | null };
 
 const consoleNav = [
   { href: "/admin/enquiries/", label: "Enquiries" },
-  { href: "/admin/media/", label: "Media" },
-  { href: "/admin/content/", label: "Content" },
   { href: "/admin/posts/", label: "News" },
 ] as const;
 
