@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.auth.verifier import StaffMember, hash_session_token
-from app.client_ip import client_identity
+from app.client_ip import client_identity, vouched_visitor_identity
 from app.domain import StaffRole
 from app.repositories.enquiries import EnquiryRepository
 from app.repositories.photos import PhotoRepository
@@ -80,9 +80,30 @@ async def get_rate_limiter(request: Request, session: SessionDep) -> FixedWindow
     return FixedWindowRateLimiter(RateLimitWindows(session), state["rate_limit_policy"], state["purge_cadence"])
 
 
-async def get_auth_rate_limiter(request: Request, session: SessionDep) -> FixedWindowRateLimiter:
+async def get_sign_in_identity(request: Request) -> str | None:
+    """The visitor signing in: the one the site's server vouches for, or else whoever is calling directly."""
+    key = _app_state(request)["settings"].visitor_address_key
+    vouched = vouched_visitor_identity(request, key.get_secret_value().encode()) if key is not None else None
+    return vouched if vouched is not None else await get_client_identity(request)
+
+
+async def get_code_request_limiter(request: Request, session: SessionDep) -> FixedWindowRateLimiter:
     state = _app_state(request)
-    return FixedWindowRateLimiter(RateLimitWindows(session), state["auth_rate_limit_policy"], state["purge_cadence"])
+    policy = state["code_request_rate_limit_policy"]
+    return FixedWindowRateLimiter(RateLimitWindows(session), policy, state["purge_cadence"])
+
+
+async def get_code_check_limiter(request: Request, session: SessionDep) -> FixedWindowRateLimiter:
+    state = _app_state(request)
+    policy = state["code_check_rate_limit_policy"]
+    return FixedWindowRateLimiter(RateLimitWindows(session), policy, state["purge_cadence"])
+
+
+async def get_code_issue_limiter(request: Request, session: SessionDep) -> FixedWindowRateLimiter:
+    """Caps the codes issued for one email address, whoever asks and from wherever."""
+    state = _app_state(request)
+    policy = state["code_issue_rate_limit_policy"]
+    return FixedWindowRateLimiter(RateLimitWindows(session), policy, state["purge_cadence"])
 
 
 async def get_notifier(request: Request, session: SessionDep) -> EnquiryNotifier:
@@ -154,7 +175,10 @@ StaffRepositoryDep = Annotated[StaffRepository, Depends(get_staff_repository)]
 MediaAllowedHostsDep = Annotated[tuple[str, ...], Depends(get_media_allowed_hosts)]
 ClientIdentityDep = Annotated[str | None, Depends(get_client_identity)]
 RateLimiterDep = Annotated[FixedWindowRateLimiter, Depends(get_rate_limiter)]
-AuthRateLimiterDep = Annotated[FixedWindowRateLimiter, Depends(get_auth_rate_limiter)]
+SignInIdentityDep = Annotated[str | None, Depends(get_sign_in_identity)]
+CodeRequestLimiterDep = Annotated[FixedWindowRateLimiter, Depends(get_code_request_limiter)]
+CodeCheckLimiterDep = Annotated[FixedWindowRateLimiter, Depends(get_code_check_limiter)]
+CodeIssueLimiterDep = Annotated[FixedWindowRateLimiter, Depends(get_code_issue_limiter)]
 NotifierDep = Annotated[EnquiryNotifier, Depends(get_notifier)]
 AuthMailerDep = Annotated[StaffAuthMailer, Depends(get_auth_mailer)]
 StaffAuthSecretDep = Annotated[bytes, Depends(get_staff_auth_secret)]

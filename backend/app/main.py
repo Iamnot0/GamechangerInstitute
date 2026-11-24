@@ -32,6 +32,7 @@ _SECONDS_PER_HOUR: Final = 3600
 _PURGE_INTERVAL_SECONDS: Final = 600
 _AUTH_ATTEMPTS_PER_WINDOW: Final = 10
 _AUTH_WINDOW_SECONDS: Final = 600
+_CODES_PER_EMAIL_PER_WINDOW: Final = 5
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -53,9 +54,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     window=FixedWindow(settings.rate_limit_per_ip, settings.rate_limit_window_seconds),
                     hash_key=hash_key,
                 ),
-                auth_rate_limit_policy=RateLimitPolicy(
-                    namespace="rate-limit:staff-auth",
+                code_request_rate_limit_policy=RateLimitPolicy(
+                    namespace="rate-limit:staff-code-request",
                     window=FixedWindow(_AUTH_ATTEMPTS_PER_WINDOW, _AUTH_WINDOW_SECONDS),
+                    hash_key=hash_key,
+                ),
+                code_check_rate_limit_policy=RateLimitPolicy(
+                    namespace="rate-limit:staff-code-check",
+                    window=FixedWindow(_AUTH_ATTEMPTS_PER_WINDOW, _AUTH_WINDOW_SECONDS),
+                    hash_key=hash_key,
+                ),
+                code_issue_rate_limit_policy=RateLimitPolicy(
+                    namespace="rate-limit:staff-code-issue",
+                    window=FixedWindow(_CODES_PER_EMAIL_PER_WINDOW, _AUTH_WINDOW_SECONDS),
                     hash_key=hash_key,
                 ),
                 purge_cadence=Cadence(_PURGE_INTERVAL_SECONDS),

@@ -1,4 +1,6 @@
 import "server-only";
+import { createHmac } from "node:crypto";
+import { headers as incomingHeaders } from "next/headers";
 import type {
   AdminPost,
   EnquiryDetail,
@@ -71,12 +73,24 @@ export type AuthenticatedSession = {
   user: { id: string; email: string; role: StaffRole };
 };
 
-export function requestStaffCode(email: string): Promise<{ sent: boolean }> {
-  return send<{ sent: boolean }>("/v1/auth/request-code", json("POST", { email }));
+/** Sign-in attempts are limited per visitor, but the service only ever sees this server calling.
+    So the visitor's address, as the edge reported it, is passed on under a signature the service checks. */
+async function visitorHeaders(): Promise<Record<string, string>> {
+  const key = process.env.VISITOR_ADDRESS_KEY;
+  const address = (await incomingHeaders()).get("x-real-ip");
+  if (!key || !address) return {};
+  return {
+    "X-Visitor-Address": address,
+    "X-Visitor-Signature": createHmac("sha256", key).update(`visitor-address\n${address}`).digest("hex"),
+  };
 }
 
-export function verifyStaffCode(email: string, code: string): Promise<AuthenticatedSession> {
-  return send<AuthenticatedSession>("/v1/auth/verify-code", json("POST", { email, code }));
+export async function requestStaffCode(email: string): Promise<{ sent: boolean }> {
+  return send<{ sent: boolean }>("/v1/auth/request-code", { ...json("POST", { email }), headers: await visitorHeaders() });
+}
+
+export async function verifyStaffCode(email: string, code: string): Promise<AuthenticatedSession> {
+  return send<AuthenticatedSession>("/v1/auth/verify-code", { ...json("POST", { email, code }), headers: await visitorHeaders() });
 }
 
 export async function revokeStaffSession(token: string): Promise<void> {

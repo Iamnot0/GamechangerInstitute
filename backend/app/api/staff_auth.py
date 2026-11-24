@@ -13,9 +13,11 @@ from app.auth.verifier import (
 )
 from app.dependencies import (
     AuthMailerDep,
-    AuthRateLimiterDep,
-    ClientIdentityDep,
+    CodeCheckLimiterDep,
+    CodeIssueLimiterDep,
+    CodeRequestLimiterDep,
     SessionDep,
+    SignInIdentityDep,
     StaffAuthSecretDep,
     StaffDep,
     StaffRepositoryDep,
@@ -69,24 +71,31 @@ async def _count_attempt(
 )
 async def request_login_code(
     payload: CodeRequest,
-    client_identity: ClientIdentityDep,
-    rate_limiter: AuthRateLimiterDep,
+    visitor: SignInIdentityDep,
+    rate_limiter: CodeRequestLimiterDep,
+    issue_limiter: CodeIssueLimiterDep,
     session: SessionDep,
     repository: StaffRepositoryDep,
     mailer: AuthMailerDep,
     secret: StaffAuthSecretDep,
 ) -> CodeRequested:
-    await _count_attempt(rate_limiter, client_identity, session)
+    await _count_attempt(rate_limiter, visitor, session)
+    # Counted for every address, staff or not, so that reaching the cap looks the same from outside:
+    # the request is accepted and nothing is sent. The code already emailed stays valid.
+    may_issue = (await issue_limiter.hit(payload.email.lower())).allowed
+    await session.commit()
 
     user = await repository.find_by_email(payload.email)
-    if user is not None:
+    if user is None:
+        logger.info("staff login code ignored: unknown email")
+    elif not may_issue:
+        logger.warning("staff login code withheld: too many for this email", extra={"actor_sub": str(user.id)})
+    else:
         code = generate_login_code()
         code_hash = hash_login_code(secret, user.email, code)
         await repository.store_login_code(user.email, code_hash)
         await mailer.send_login_code(user.email, code)
         logger.info("staff login code issued", extra={"actor_sub": str(user.id)})
-    else:
-        logger.info("staff login code ignored: unknown email")
 
     return CodeRequested()
 
@@ -98,13 +107,13 @@ async def request_login_code(
 )
 async def verify_login_code(
     payload: CodeVerification,
-    client_identity: ClientIdentityDep,
-    rate_limiter: AuthRateLimiterDep,
+    visitor: SignInIdentityDep,
+    rate_limiter: CodeCheckLimiterDep,
     session: SessionDep,
     repository: StaffRepositoryDep,
     secret: StaffAuthSecretDep,
 ) -> AuthenticatedSession:
-    await _count_attempt(rate_limiter, client_identity, session)
+    await _count_attempt(rate_limiter, visitor, session)
 
     candidate_hash = hash_login_code(secret, payload.email, payload.code)
     user = await repository.verify_and_consume_code(payload.email, candidate_hash)

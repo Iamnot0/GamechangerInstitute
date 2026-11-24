@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     rate_limit_per_ip: PositiveInt = 5
     rate_limit_window_seconds: PositiveInt = 600
     rate_limit_hash_key: Annotated[SecretStr, Field(min_length=32)]
+    visitor_address_key: Annotated[SecretStr, Field(min_length=32)] | None = None
     smtp_host: str | None = None
     smtp_port: int = Field(default=587, ge=1, le=65535)
     smtp_username: str | None = None

@@ -15,7 +15,9 @@ class AppState(TypedDict):
     engine: AsyncEngine
     session_factory: async_sessionmaker[AsyncSession]
     rate_limit_policy: RateLimitPolicy
-    auth_rate_limit_policy: RateLimitPolicy
+    code_request_rate_limit_policy: RateLimitPolicy
+    code_check_rate_limit_policy: RateLimitPolicy
+    code_issue_rate_limit_policy: RateLimitPolicy
     purge_cadence: Cadence
     notification_budget_policy: BudgetPolicy
     staff_mail_budget_policy: BudgetPolicy
