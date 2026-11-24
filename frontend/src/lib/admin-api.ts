@@ -1,6 +1,7 @@
 import "server-only";
 import { createHmac } from "node:crypto";
 import { headers as incomingHeaders } from "next/headers";
+import { cache } from "react";
 import type {
   AdminPost,
   EnquiryDetail,
@@ -106,9 +107,8 @@ export function listEnquiries(filters: EnquiryFilters): Promise<EnquiryPage> {
   return request<EnquiryPage>(`/v1/admin/enquiries${suffix}`);
 }
 
-export function getEnquirySummary(): Promise<EnquirySummary> {
-  return request<EnquirySummary>("/v1/admin/enquiries/summary");
-}
+/** Asked for by the console menu and by the enquiries page, so one page view makes one request. */
+export const getEnquirySummary = cache((): Promise<EnquirySummary> => request<EnquirySummary>("/v1/admin/enquiries/summary"));
 
 export function getEnquiry(enquiryId: string): Promise<EnquiryDetail> {
   return request<EnquiryDetail>(`/v1/admin/enquiries/${id(enquiryId)}`);

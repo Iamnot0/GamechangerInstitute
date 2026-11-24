@@ -20,6 +20,7 @@ export type SavedPost = {
   photos: PostPhoto[];
   document: PostDocument | null;
   videoUrl: string | null;
+  updatedAt: string;
 };
 
 const photoFolder = "photos/";
@@ -115,6 +116,7 @@ const saved = (post: AdminPost): SavedPost => ({
   photos: post.photos,
   document: post.document,
   videoUrl: post.video_url,
+  updatedAt: post.updated_at,
 });
 
 const refresh = (published: boolean) => {

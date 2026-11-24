@@ -1,19 +1,30 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AccessDenied } from "@/components/admin/AccessDenied";
-import { AdminHeader } from "@/components/admin/AdminHeader";
+import { ConsoleSidebar } from "@/components/admin/ConsoleSidebar";
+import { getEnquirySummary } from "@/lib/admin-api";
+import { load } from "@/lib/admin-load";
+import { consoleMenuCookie } from "@/lib/console-menu";
 import { getStaffSession } from "@/lib/staff";
 
 export default async function StaffConsoleLayout({ children }: Readonly<{ children: ReactNode }>) {
   const session = await getStaffSession();
   if (!session.signedIn) redirect("/sign-in/");
+  const summary = session.isStaff ? await load(getEnquirySummary) : null;
+  const newEnquiries = summary && "data" in summary ? summary.data.by_status.new : null;
 
   return (
-    <>
-      <AdminHeader email={session.email} isAdmin={session.isAdmin} />
-      <main id="main" className="admin">
+    <div className="console">
+      <ConsoleSidebar
+        email={session.email}
+        isAdmin={session.isAdmin}
+        newEnquiries={newEnquiries}
+        startsCollapsed={(await cookies()).get(consoleMenuCookie)?.value === "collapsed"}
+      />
+      <main id="main" className="console__main">
         {session.isStaff ? children : <AccessDenied />}
       </main>
-    </>
+    </div>
   );
 }

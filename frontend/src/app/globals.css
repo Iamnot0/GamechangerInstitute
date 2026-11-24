@@ -231,6 +231,7 @@
   .legal__inner,
   .news__inner,
   .post__inner,
+  .article__inner,
   .not-found__inner {
     @apply mx-auto w-full;
     max-width: var(--shell-max);
@@ -2843,48 +2844,193 @@
     @apply flex flex-wrap items-center gap-4;
   }
 
-  .admin-header {
-    @apply sticky top-0 z-40 border-b border-line bg-canvas;
-  }
+  .console {
+    @apply min-h-dvh;
 
-  .admin-header__inner {
-    @apply mx-auto flex w-full flex-wrap items-center gap-x-8 gap-y-2 py-3;
-    max-width: var(--shell-max);
-    padding-inline: var(--shell-gutter);
-  }
+    @variant lg {
+      @apply grid;
+      grid-template-columns: 17rem minmax(0, 1fr);
+      transition: grid-template-columns 200ms ease-out;
 
-  .admin-header__brand {
-    @apply flex items-center gap-4;
-  }
-
-  .admin-header__label {
-    @apply border-l border-line-strong pl-4 text-sm font-semibold text-muted;
-  }
-
-  .admin-header__nav {
-    @apply flex-1;
-  }
-
-  .admin-header__link {
-    @apply inline-flex min-h-11 items-center font-semibold text-fg no-underline;
-  }
-
-  .admin-header__account {
-    @apply flex items-center gap-3;
-  }
-
-  .admin-header__email {
-    @apply hidden text-sm text-muted;
-
-    @variant md {
-      @apply inline;
+      &:has(.console__sidebar[data-collapsed="true"]) {
+        grid-template-columns: 4.75rem minmax(0, 1fr);
+      }
     }
   }
 
-  .admin {
-    @apply mx-auto w-full py-10;
-    max-width: var(--shell-max);
-    padding-inline: var(--shell-gutter);
+  /* The column runs the full height of the page; its contents stay in view while the page scrolls. */
+  .console__sidebar {
+    @apply border-b border-line bg-canvas-alt;
+
+    @variant lg {
+      @apply border-r border-b-0;
+    }
+  }
+
+  .console__sidebar-inner {
+    @apply flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3;
+
+    @variant lg {
+      @apply sticky top-0 h-dvh flex-col flex-nowrap items-stretch gap-8 overflow-x-clip overflow-y-auto px-4 py-6;
+    }
+  }
+
+  .console__brand {
+    @apply grid gap-1;
+  }
+
+  .console__label {
+    @apply text-sm font-semibold text-muted;
+  }
+
+  .console-icon {
+    @apply size-6 shrink-0 fill-none stroke-current;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .console-nav {
+    @apply order-last w-full;
+
+    @variant lg {
+      @apply order-none flex-1;
+    }
+  }
+
+  .console-nav__list {
+    @apply flex flex-wrap gap-x-2;
+
+    @variant lg {
+      @apply grid gap-1;
+    }
+  }
+
+  .console-nav__link {
+    @apply relative flex min-h-11 items-center gap-3 border-b-2 border-transparent px-3 font-semibold text-muted no-underline;
+
+    &:hover {
+      @apply text-fg;
+    }
+
+    &[aria-current="page"] {
+      @apply border-terracotta text-fg;
+    }
+
+    @variant lg {
+      @apply border-b-0 border-l-2;
+      border-radius: 0 var(--radius-control) var(--radius-control) 0;
+
+      &:hover,
+      &[aria-current="page"] {
+        @apply bg-canvas;
+      }
+    }
+  }
+
+  .console-nav__label {
+    @apply flex-1;
+  }
+
+  .console-nav .console-icon {
+    @apply hidden;
+
+    @variant lg {
+      @apply block;
+    }
+  }
+
+  .console-nav__count {
+    @apply bg-canvas-tint px-2 py-0.5 text-sm text-fg;
+    border-radius: var(--radius-control);
+  }
+
+  .console__account {
+    @apply ml-auto flex items-center gap-4;
+
+    @variant lg {
+      @apply ml-0 grid gap-2 border-t border-line pt-4;
+    }
+  }
+
+  .console__email {
+    @apply hidden px-3 text-sm break-all text-muted;
+
+    @variant md {
+      @apply block;
+    }
+  }
+
+  .console__account-tools {
+    @apply flex items-center justify-between gap-4;
+  }
+
+  .console__tool {
+    @apply flex min-h-11 cursor-pointer items-center gap-3 border-0 bg-transparent px-3 font-semibold text-muted;
+    border-radius: var(--radius-control);
+
+    &:hover {
+      @apply bg-canvas text-fg;
+    }
+  }
+
+  .console__toggle {
+    @apply hidden;
+
+    @variant lg {
+      @apply flex w-full;
+    }
+  }
+
+  @variant lg {
+    .console__sidebar[data-collapsed="true"] {
+      .wordmark__text,
+      .console__label,
+      .console__email,
+      .console-nav__label,
+      .console__tool-label {
+        @apply sr-only;
+      }
+
+      .console__sidebar-inner {
+        @apply items-center px-2;
+      }
+
+      .console-nav__link,
+      .console__tool {
+        @apply justify-center px-0;
+      }
+
+      .console-nav__link {
+        @apply w-11 border-l-0;
+        border-radius: var(--radius-control);
+      }
+
+      .console-nav__link[aria-current="page"] {
+        box-shadow: inset 2px 0 0 var(--color-terracotta);
+      }
+
+      .console-nav__count {
+        @apply absolute -top-1 -right-1 px-1.5 text-xs;
+      }
+
+      .console__account-tools {
+        @apply flex-col gap-2;
+      }
+
+      .console__tool {
+        @apply w-11;
+      }
+    }
+  }
+
+  .console__main {
+    @apply w-full px-5 py-8;
+    max-width: 78rem;
+
+    @variant lg {
+      @apply px-12 py-12;
+    }
   }
 
   .admin-page {
@@ -3131,10 +3277,6 @@
     @apply text-base;
   }
 
-  .admin-header__nav {
-    @apply flex flex-wrap gap-x-7;
-  }
-
   .admin-page__header--split {
     @apply flex flex-wrap items-end justify-between gap-4;
   }
@@ -3220,11 +3362,37 @@
   }
 
   .post-editor {
-    @apply grid max-w-[46rem] gap-8;
+    @apply grid items-start gap-6;
+
+    @variant xl {
+      grid-template-columns: minmax(0, 1fr) 22rem;
+    }
   }
 
-  .post-editor__fields {
+  .post-editor__main,
+  .post-editor__side {
     @apply grid gap-6;
+  }
+
+  .editor-card {
+    @apply grid gap-5 border border-line-strong bg-canvas p-6;
+    border-radius: var(--radius-surface);
+  }
+
+  .editor-card__title {
+    @apply flex items-baseline justify-between gap-3 border-b border-line pb-3 text-xl;
+  }
+
+  .editor-card__facts {
+    @apply grid gap-2 text-sm;
+
+    div {
+      @apply flex items-center justify-between gap-4;
+    }
+
+    dt {
+      @apply text-muted;
+    }
   }
 
   .post-editor__date {
@@ -3232,7 +3400,20 @@
   }
 
   .post-editor__actions {
-    @apply flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-6;
+    @apply flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-5;
+  }
+
+  .post-editor__side .post-photos {
+    @apply items-start;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .post-editor__side .post-editor__actions {
+    @apply grid justify-items-start;
+
+    .button {
+      @apply w-full justify-center;
+    }
   }
 
   .post-photos {
@@ -3280,8 +3461,51 @@
   }
 
   .post-list__item {
-    @apply grid items-center gap-4 border-b border-line py-4;
-    grid-template-columns: 6rem minmax(0, 1fr) auto;
+    @apply grid items-center gap-x-4 gap-y-2 border-b border-line py-4;
+    grid-template-columns: 6rem minmax(0, 1fr);
+
+    @variant md {
+      grid-template-columns: 6rem minmax(0, 1fr) auto auto;
+    }
+  }
+
+  .post-list__when {
+    @apply text-sm text-muted;
+  }
+
+  .post-list__tools {
+    @apply col-span-2 flex items-center gap-5;
+
+    @variant md {
+      @apply col-span-1 justify-end;
+    }
+  }
+
+  .post-list__confirm {
+    @apply inline-flex flex-wrap items-center gap-x-4;
+  }
+
+  .media-list__filter {
+    @apply mb-2;
+  }
+
+  .post-preview {
+    @apply grid gap-6;
+  }
+
+  .post-preview__notice {
+    @apply flex flex-wrap items-center gap-x-3 gap-y-1 border border-line-strong bg-canvas-tint px-4 py-3;
+    border-radius: var(--radius-control);
+
+    a {
+      @apply ml-auto font-semibold text-accent;
+    }
+  }
+
+  .post-preview__page {
+    @apply border border-line bg-canvas;
+    border-radius: var(--radius-surface);
+    overflow: clip;
   }
 
   .post-list__thumb {
@@ -3552,6 +3776,98 @@
   .post__photo {
     @apply w-full;
     border-radius: var(--radius-control);
+  }
+
+  .article {
+    @apply pb-16;
+
+    @variant md {
+      @apply pb-24;
+    }
+  }
+
+  .article__band {
+    @apply bg-forest-deep;
+  }
+
+  .article__cover {
+    @apply mx-auto w-full object-cover;
+    max-width: 120rem;
+    height: clamp(14rem, 38vw, 30rem);
+    /* People stand in the upper part of most photos, so the crop favours it. */
+    object-position: 50% 28%;
+  }
+
+  .article__inner {
+    @apply grid gap-x-16 gap-y-14 pt-12;
+
+    @variant lg {
+      grid-template-columns: minmax(0, 46rem) minmax(0, 18rem);
+      @apply justify-between pt-16;
+    }
+  }
+
+  .article__main {
+    @apply grid content-start gap-4;
+  }
+
+  .article__title {
+    @apply text-headline;
+  }
+
+  .article__meta {
+    @apply flex flex-wrap gap-x-6 gap-y-1 border-b border-line pb-6 text-sm text-muted;
+  }
+
+  .article__body {
+    @apply mt-4 grid gap-5 text-lg;
+
+    p:first-child::first-letter {
+      @apply float-left pr-3 font-display text-accent;
+      font-size: 4.2em;
+      line-height: 0.82;
+      padding-top: 0.08em;
+    }
+  }
+
+  .article__aside {
+    @apply grid content-start gap-10;
+
+    @variant lg {
+      @apply sticky top-28 self-start;
+    }
+  }
+
+  .article-aside__title {
+    @apply mb-4 border-b border-line-strong pb-2 font-sans text-sm font-semibold text-muted;
+  }
+
+  .keep-reading__list {
+    @apply grid gap-5;
+  }
+
+  .keep-reading__link {
+    @apply font-display text-lg leading-snug text-fg no-underline;
+
+    &:hover {
+      @apply text-accent underline;
+    }
+  }
+
+  .keep-reading__date {
+    @apply mt-1 text-sm text-muted;
+  }
+
+  .keep-reading__all {
+    @apply mt-6 inline-flex min-h-11 items-center font-semibold text-accent;
+  }
+
+  .share__list {
+    @apply flex flex-wrap gap-x-5 gap-y-1;
+  }
+
+  .share__link {
+    @apply inline-flex min-h-11 cursor-pointer items-center border-0 bg-transparent p-0 font-semibold text-accent underline;
   }
 
   .video-embed {

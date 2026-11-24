@@ -2,11 +2,12 @@
 
 import { upload } from "@vercel/blob/client";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useTransition, type DragEvent } from "react";
 import { ActionNotice, type Notice } from "@/components/admin/ActionNotice";
 import type { AdminPost, PostDocument, PostFields, PostKind, PostPhoto } from "@/lib/admin-types";
 import { captureFrame, preparePhoto, storageName, type PreparedImage } from "@/lib/browser-media";
-import { megabytes } from "@/lib/format";
+import { formatDay, megabytes } from "@/lib/format";
 import { kindLabels } from "@/lib/media-kinds";
 import {
   discardPhoto,
@@ -45,6 +46,7 @@ export function PostEditor({ kind, post }: PostEditorProps) {
   const [savedFiles, setSavedFiles] = useState(() => fileSet(post?.document?.url, post?.video_url));
   const [version, setVersion] = useState(post?.version ?? 0);
   const [published, setPublished] = useState(post?.status === "published");
+  const [lastChanged, setLastChanged] = useState(post?.updated_at ?? null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -63,6 +65,7 @@ export function PostEditor({ kind, post }: PostEditorProps) {
     if (!result.ok) return fail(result);
     setVersion(result.value.version);
     setPublished(result.value.published);
+    setLastChanged(result.value.updatedAt);
     setPhotos(result.value.photos);
     setDocument(result.value.document);
     setVideoUrl(result.value.videoUrl);
@@ -258,6 +261,48 @@ export function PostEditor({ kind, post }: PostEditorProps) {
     </div>
   );
 
+  const photosField = (
+    <div className="form-field">
+      <span className="form-field__hint">The first one is the cover. Up to {mostPhotos}.</span>
+      {photos.length > 0 ? (
+        <ul className="post-photos">
+          {photos.map((photo, index) => (
+            <li key={photo.id} className="post-photos__item">
+              <Image src={photo.src} width={photo.width} height={photo.height} alt="" className="post-photos__thumb" />
+              <div className="post-photos__tools">
+                {index === 0 ? (
+                  <span className="post-photos__cover">Cover</span>
+                ) : (
+                  <button type="button" className="text-button" disabled={locked} onClick={() => makeCover(photo)}>
+                    Make cover
+                  </button>
+                )}
+                <button type="button" className="text-button text-button--danger" disabled={locked} onClick={() => removePhoto(photo)}>
+                  Remove
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <label className="uploader__drop" onDragOver={(event) => event.preventDefault()} onDrop={drop((files) => void addPhotos(files))}>
+        <input
+          type="file"
+          className="uploader__input"
+          accept={photoTypes.join(",")}
+          multiple
+          disabled={locked || photos.length >= mostPhotos}
+          onChange={(event) => {
+            void addPhotos(event.target.files);
+            event.target.value = "";
+          }}
+        />
+        <strong>Drag photos here, or choose files</strong>
+        <span>JPG, PNG or WebP. Large photos are resized automatically.</span>
+      </label>
+    </div>
+  );
+
   return (
     <form
       className="post-editor"
@@ -266,178 +311,182 @@ export function PostEditor({ kind, post }: PostEditorProps) {
         submit(true);
       }}
     >
-      <div className="post-editor__fields">
-        <label className="form-field" htmlFor="post-title">
-          <span className="form-field__label">Title</span>
-          <input id="post-title" className="form-control" type="text" required maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} />
-        </label>
+      <div className="post-editor__main">
+        <section className="editor-card" aria-labelledby="editor-details">
+          <h2 id="editor-details" className="editor-card__title">
+            {label.name} details
+          </h2>
+          <label className="form-field" htmlFor="post-title">
+            <span className="form-field__label">Title</span>
+            <input id="post-title" className="form-control" type="text" required maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} />
+          </label>
+
+          {kind === "article" ? (
+            <>
+              <label className="form-field" htmlFor="post-body">
+                <span className="form-field__label">Text</span>
+                <textarea id="post-body" className="form-control" rows={16} required maxLength={10000} value={body} onChange={(event) => setBody(event.target.value)} />
+                <span className="form-field__hint">Leave an empty line between paragraphs.</span>
+              </label>
+              <label className="form-field post-editor__date" htmlFor="post-date">
+                <span className="form-field__label">
+                  Event date<span className="form-field__optional">Optional</span>
+                </span>
+                <input id="post-date" className="form-control" type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} />
+              </label>
+            </>
+          ) : null}
+
+          {kind === "video" ? (
+            <>
+              <fieldset className="source-chooser">
+                <legend className="form-field__label">Where is the video?</legend>
+                <div className="source-chooser__options">
+                  {(["youtube", "file"] as const).map((option) => (
+                    <label key={option} className="source-chooser__option">
+                      <input type="radio" name="video-source" className="source-chooser__input" checked={source === option} disabled={locked} onChange={() => chooseSource(option)} />
+                      <span className="source-chooser__title">{option === "youtube" ? "On YouTube" : "A file on this computer"}</span>
+                      <span className="source-chooser__detail">{option === "youtube" ? "Paste the link." : `Upload an MP4, up to ${megabytes(largestVideoBytes)}.`}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {source === "youtube" ? (
+                <label className="form-field" htmlFor="post-video">
+                  <span className="form-field__label">YouTube link</span>
+                  <input id="post-video" className="form-control" type="url" inputMode="url" required maxLength={200} placeholder="https://youtu.be/…" value={youtube} onChange={(event) => setYoutube(event.target.value)} />
+                  <span className="form-field__hint">The video stays on YouTube and plays inside the site.</span>
+                </label>
+              ) : (
+                <div className="form-field">
+                  <span className="form-field__label">Video file</span>
+                  {videoUrl ? (
+                    <div className="post-document">
+                      <video className="post-video__preview" src={videoUrl} poster={photos[0]?.src} controls preload="metadata" />
+                      <button type="button" className="text-button text-button--danger" disabled={locked} onClick={removeVideo}>
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="uploader__drop" onDragOver={(event) => event.preventDefault()} onDrop={drop((files) => void addVideo(files[0]))}>
+                      <input
+                        type="file"
+                        className="uploader__input"
+                        accept="video/mp4"
+                        disabled={locked}
+                        onChange={(event) => {
+                          void addVideo(event.target.files?.[0]);
+                          event.target.value = "";
+                        }}
+                      />
+                      <strong>Drag an MP4 here, or choose a file</strong>
+                      <span>Up to {megabytes(largestVideoBytes)}. A thumbnail is made automatically.</span>
+                    </label>
+                  )}
+                </div>
+              )}
+
+              <label className="form-field" htmlFor="post-body">
+                <span className="form-field__label">
+                  About the video<span className="form-field__optional">Optional</span>
+                </span>
+                <textarea id="post-body" className="form-control" rows={4} maxLength={10000} value={body} onChange={(event) => setBody(event.target.value)} />
+              </label>
+            </>
+          ) : null}
+
+          {kind === "document" ? (
+            <>
+              {pdfField(true)}
+              <label className="form-field" htmlFor="post-body">
+                <span className="form-field__label">
+                  One line about it<span className="form-field__optional">Optional</span>
+                </span>
+                <input id="post-body" className="form-control" type="text" maxLength={300} value={body} onChange={(event) => setBody(event.target.value)} />
+              </label>
+            </>
+          ) : null}
+        </section>
+      </div>
+
+      <div className="post-editor__side">
+        <section className="editor-card" aria-labelledby="editor-publishing">
+          <h2 id="editor-publishing" className="editor-card__title">
+            Publishing
+          </h2>
+          <dl className="editor-card__facts">
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <span className={`status-badge ${published ? "status-badge--live" : "status-badge--draft"}`}>{published ? "On the site" : "Draft"}</span>
+              </dd>
+            </div>
+            {lastChanged ? (
+              <div>
+                <dt>Last changed</dt>
+                <dd>{formatDay(lastChanged)}</dd>
+              </div>
+            ) : null}
+          </dl>
+
+          {uploading ? (
+            <p className="post-editor__progress" role="status">
+              {uploading}
+            </p>
+          ) : null}
+          <ActionNotice notice={notice} />
+
+          <div className="post-editor__actions">
+            <button type="submit" className="button button--primary" disabled={locked}>
+              {published ? "Save changes" : "Publish"}
+            </button>
+            {published ? (
+              <button type="button" className="button button--secondary" disabled={locked} onClick={unpublish}>
+                Take off the site
+              </button>
+            ) : (
+              <button type="button" className="button button--secondary" disabled={locked || title.trim() === ""} onClick={() => submit(false)}>
+                Save as draft
+              </button>
+            )}
+            {post ? (
+              <Link href={`/admin/posts/${post.id}/preview/`} className="text-button">
+                Preview the saved version
+              </Link>
+            ) : null}
+            {post && !confirming ? (
+              <button type="button" className="text-button text-button--danger" disabled={locked} onClick={() => setConfirming(true)}>
+                Delete this {label.name.toLowerCase()}
+              </button>
+            ) : null}
+            {confirming ? (
+              <>
+                <button type="button" className="text-button text-button--danger" disabled={locked} onClick={remove}>
+                  Yes, delete it
+                </button>
+                <button type="button" className="text-button" disabled={locked} onClick={() => setConfirming(false)}>
+                  Keep it
+                </button>
+              </>
+            ) : null}
+          </div>
+        </section>
 
         {kind === "article" ? (
           <>
-            <div className="form-field">
-              <span className="form-field__label">
-                Photos<span className="form-field__optional">The first one is the cover. Up to {mostPhotos}.</span>
-              </span>
-              {photos.length > 0 ? (
-                <ul className="post-photos">
-                  {photos.map((photo, index) => (
-                    <li key={photo.id} className="post-photos__item">
-                      <Image src={photo.src} width={photo.width} height={photo.height} alt="" className="post-photos__thumb" />
-                      <div className="post-photos__tools">
-                        {index === 0 ? (
-                          <span className="post-photos__cover">Cover</span>
-                        ) : (
-                          <button type="button" className="text-button" disabled={locked} onClick={() => makeCover(photo)}>
-                            Make cover
-                          </button>
-                        )}
-                        <button type="button" className="text-button text-button--danger" disabled={locked} onClick={() => removePhoto(photo)}>
-                          Remove
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <label className="uploader__drop" onDragOver={(event) => event.preventDefault()} onDrop={drop((files) => void addPhotos(files))}>
-                <input
-                  type="file"
-                  className="uploader__input"
-                  accept={photoTypes.join(",")}
-                  multiple
-                  disabled={locked || photos.length >= mostPhotos}
-                  onChange={(event) => {
-                    void addPhotos(event.target.files);
-                    event.target.value = "";
-                  }}
-                />
-                <strong>Drag photos here, or choose files</strong>
-                <span>JPG, PNG or WebP. Large photos are resized automatically.</span>
-              </label>
-            </div>
-
-            <label className="form-field" htmlFor="post-body">
-              <span className="form-field__label">Text</span>
-              <textarea id="post-body" className="form-control" rows={12} required maxLength={10000} value={body} onChange={(event) => setBody(event.target.value)} />
-              <span className="form-field__hint">Leave an empty line between paragraphs.</span>
-            </label>
-
-            <label className="form-field post-editor__date" htmlFor="post-date">
-              <span className="form-field__label">
-                Event date<span className="form-field__optional">Optional</span>
-              </span>
-              <input id="post-date" className="form-control" type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} />
-            </label>
-
-            {pdfField(false)}
-          </>
-        ) : null}
-
-        {kind === "video" ? (
-          <>
-            <fieldset className="source-chooser">
-              <legend className="form-field__label">Where is the video?</legend>
-              <div className="source-chooser__options">
-                {(["youtube", "file"] as const).map((option) => (
-                  <label key={option} className="source-chooser__option">
-                    <input type="radio" name="video-source" className="source-chooser__input" checked={source === option} disabled={locked} onChange={() => chooseSource(option)} />
-                    <span className="source-chooser__title">{option === "youtube" ? "On YouTube" : "A file on this computer"}</span>
-                    <span className="source-chooser__detail">{option === "youtube" ? "Paste the link." : `Upload an MP4, up to ${megabytes(largestVideoBytes)}.`}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            {source === "youtube" ? (
-              <label className="form-field" htmlFor="post-video">
-                <span className="form-field__label">YouTube link</span>
-                <input id="post-video" className="form-control" type="url" inputMode="url" required maxLength={200} placeholder="https://youtu.be/…" value={youtube} onChange={(event) => setYoutube(event.target.value)} />
-                <span className="form-field__hint">The video stays on YouTube and plays inside the site.</span>
-              </label>
-            ) : (
-              <div className="form-field">
-                <span className="form-field__label">Video file</span>
-                {videoUrl ? (
-                  <div className="post-document">
-                    <video className="post-video__preview" src={videoUrl} poster={photos[0]?.src} controls preload="metadata" />
-                    <button type="button" className="text-button text-button--danger" disabled={locked} onClick={removeVideo}>
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <label className="uploader__drop" onDragOver={(event) => event.preventDefault()} onDrop={drop((files) => void addVideo(files[0]))}>
-                    <input
-                      type="file"
-                      className="uploader__input"
-                      accept="video/mp4"
-                      disabled={locked}
-                      onChange={(event) => {
-                        void addVideo(event.target.files?.[0]);
-                        event.target.value = "";
-                      }}
-                    />
-                    <strong>Drag an MP4 here, or choose a file</strong>
-                    <span>Up to {megabytes(largestVideoBytes)}. A thumbnail is made automatically.</span>
-                  </label>
-                )}
-              </div>
-            )}
-
-            <label className="form-field" htmlFor="post-body">
-              <span className="form-field__label">
-                About the video<span className="form-field__optional">Optional</span>
-              </span>
-              <textarea id="post-body" className="form-control" rows={4} maxLength={10000} value={body} onChange={(event) => setBody(event.target.value)} />
-            </label>
-          </>
-        ) : null}
-
-        {kind === "document" ? (
-          <>
-            {pdfField(true)}
-            <label className="form-field" htmlFor="post-body">
-              <span className="form-field__label">
-                One line about it<span className="form-field__optional">Optional</span>
-              </span>
-              <input id="post-body" className="form-control" type="text" maxLength={300} value={body} onChange={(event) => setBody(event.target.value)} />
-            </label>
-          </>
-        ) : null}
-      </div>
-
-      {uploading ? (
-        <p className="post-editor__progress" role="status">
-          {uploading}
-        </p>
-      ) : null}
-      <ActionNotice notice={notice} />
-
-      <div className="post-editor__actions">
-        <button type="submit" className="button button--primary" disabled={locked}>
-          {published ? "Save changes" : "Publish"}
-        </button>
-        {published ? (
-          <button type="button" className="button button--secondary" disabled={locked} onClick={unpublish}>
-            Take off the site
-          </button>
-        ) : (
-          <button type="button" className="button button--secondary" disabled={locked || title.trim() === ""} onClick={() => submit(false)}>
-            Save as draft
-          </button>
-        )}
-        {post && !confirming ? (
-          <button type="button" className="text-button text-button--danger" disabled={locked} onClick={() => setConfirming(true)}>
-            Delete this {label.name.toLowerCase()}
-          </button>
-        ) : null}
-        {confirming ? (
-          <>
-            <button type="button" className="text-button text-button--danger" disabled={locked} onClick={remove}>
-              Yes, delete it
-            </button>
-            <button type="button" className="text-button" disabled={locked} onClick={() => setConfirming(false)}>
-              Keep it
-            </button>
+            <section className="editor-card" aria-labelledby="editor-photos">
+              <h2 id="editor-photos" className="editor-card__title">
+                Photos<span className="form-field__optional">Optional</span>
+              </h2>
+              {photosField}
+            </section>
+            <section className="editor-card" aria-labelledby="editor-attachment">
+              <h2 id="editor-attachment" className="editor-card__title">
+                Attachment
+              </h2>
+              {pdfField(false)}
+            </section>
           </>
         ) : null}
       </div>
