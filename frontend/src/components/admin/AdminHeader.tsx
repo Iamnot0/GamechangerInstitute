@@ -8,7 +8,7 @@ type AdminHeaderProps = { email: string | null; isAdmin: boolean };
 export function AdminHeader({ email, isAdmin }: AdminHeaderProps) {
   const navItems = [
     { href: "/admin/enquiries/", label: "Enquiries" },
-    { href: "/admin/posts/", label: "News" },
+    { href: "/admin/posts/", label: "Media" },
     ...(isAdmin ? [{ href: "/admin/staff/", label: "Staff" }] : []),
   ];
 

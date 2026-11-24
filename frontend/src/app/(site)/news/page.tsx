@@ -11,7 +11,7 @@ import { breadcrumb } from "@/lib/structured-data";
 export const revalidate = 300;
 
 export const metadata = pageMetadata({
-  title: "News and events",
+  title: "Media",
   description:
     "Roundtables, keynotes and cohort milestones from GameChanger Institute and the ARISE Leadership Transformation Programme Series.",
   path: "/news/",
@@ -33,7 +33,7 @@ export default async function NewsPage() {
 
   return (
     <>
-      <PageIntro context="GameChanger Institute" title="News and events" />
+      <PageIntro context="GameChanger Institute" title="Media" />
       <section className="news" aria-label="Posts">
         <div className="news__inner">
           {posts.length === 0 ? (
@@ -54,7 +54,7 @@ export default async function NewsPage() {
           )}
         </div>
       </section>
-      <JsonLd data={breadcrumb("News and events", "/news/")} />
+      <JsonLd data={breadcrumb("Media", "/news/")} />
     </>
   );
 }

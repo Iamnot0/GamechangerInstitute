@@ -19,7 +19,7 @@ export const generateStaticParams = () => [];
 export async function generateMetadata({ params }: PostPageProps): Promise<Metadata> {
   const post = await getPost((await params).slug);
   if (!post) return { title: "Post not found" };
-  const lead = paragraphs(post.body)[0] ?? `${post.title}, from GameChanger Institute news and events.`;
+  const lead = paragraphs(post.body)[0] ?? `${post.title}, from GameChanger Institute media.`;
   return pageMetadata({ title: post.title, description: lead.slice(0, 155), path: `/news/${post.slug}/` });
 }
 
@@ -32,7 +32,7 @@ export default async function PostPage({ params }: PostPageProps) {
     <article className="post" aria-labelledby="page-title">
       <div className="post__inner">
         <Link href="/news/" className="post__back">
-          News and events
+          Media
         </Link>
         <p className="post__date">{formatDay(post.event_date ?? post.published_at)}</p>
         <h1 id="page-title" className="post__title">

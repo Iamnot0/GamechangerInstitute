@@ -9,7 +9,7 @@ export default function NewPostPage() {
     <div className="admin-page">
       <header className="admin-page__header">
         <Link href="/admin/posts/" className="admin-page__back">
-          News
+          Media
         </Link>
         <h1 className="admin-page__title">New post</h1>
       </header>

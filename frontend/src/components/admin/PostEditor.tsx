@@ -92,7 +92,7 @@ export function PostEditor({ post }: { post: AdminPost | null }) {
           size_bytes: blob.size,
           width,
           height,
-          alt: title.trim() || "Photo from GameChanger Institute news",
+          alt: title.trim() || "Photo from GameChanger Institute media",
         });
         if (!recorded.ok) throw new Error(recorded.message);
         setPhotos((current) => [...current, recorded.value]);
@@ -146,12 +146,12 @@ export function PostEditor({ post }: { post: AdminPost | null }) {
   const submit = (publish: boolean) =>
     startTransition(async () => {
       const result = await savePost(post?.id ?? null, fields(), version, publish);
-      settle(result, publish || published ? "Saved. It is live on the News page." : "Draft saved. It is not on the site yet.");
+      settle(result, publish || published ? "Saved. It is live on the Media page." : "Draft saved. It is not on the site yet.");
     });
 
   const unpublish = () =>
     startTransition(async () => {
-      if (post) settle(await unpublishPost(post.id, version), "Taken off the News page. It is kept here as a draft.");
+      if (post) settle(await unpublishPost(post.id, version), "Taken off the Media page. It is kept here as a draft.");
     });
 
   const remove = () =>

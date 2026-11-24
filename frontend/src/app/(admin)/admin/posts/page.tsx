@@ -6,7 +6,7 @@ import { listPosts } from "@/lib/admin-api";
 import { load } from "@/lib/admin-load";
 import { formatDay } from "@/lib/format";
 
-export const metadata: Metadata = { title: "News" };
+export const metadata: Metadata = { title: "Media" };
 
 export default async function PostsPage() {
   const result = await load(listPosts);
@@ -17,8 +17,8 @@ export default async function PostsPage() {
     <div className="admin-page">
       <header className="admin-page__header admin-page__header--split">
         <div>
-          <h1 className="admin-page__title">News</h1>
-          <p className="admin-page__lede">Post photos, a video or an event. Published posts appear on the News page of the site.</p>
+          <h1 className="admin-page__title">Media</h1>
+          <p className="admin-page__lede">Post photos, a video or an event. Published posts appear on the Media page of the site.</p>
         </div>
         <Link href="/admin/posts/new/" className="button button--primary">
           New post

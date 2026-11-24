@@ -83,7 +83,7 @@ export function StaffManager({ users, currentUserId }: StaffManagerProps) {
               value={role}
               onChange={(event) => setRole(event.target.value as StaffRole)}
             >
-              <option value="staff">Staff (Enquiries and News)</option>
+              <option value="staff">Staff (Enquiries and Media)</option>
               <option value="admin">Administrator (includes Staff access)</option>
             </select>
           </label>

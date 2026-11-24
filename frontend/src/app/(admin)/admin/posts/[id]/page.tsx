@@ -17,7 +17,7 @@ export default async function PostPage({ params }: PageProps<"/admin/posts/[id]"
     <div className="admin-page">
       <header className="admin-page__header">
         <Link href="/admin/posts/" className="admin-page__back">
-          News
+          Media
         </Link>
         <h1 className="admin-page__title">{post.title}</h1>
         {post.status === "published" ? (
