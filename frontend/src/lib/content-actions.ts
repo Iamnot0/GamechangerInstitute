@@ -1,6 +1,6 @@
 "use server";
 
-import { del } from "@vercel/blob";
+import { del, head } from "@vercel/blob";
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import * as api from "@/lib/admin-api";
@@ -21,14 +21,23 @@ async function attempt<T>(work: () => Promise<T>): Promise<ActionResult<T>> {
   }
 }
 
+const uploadFolder = "photos/";
+
 const refreshMedia = () => revalidatePath("/admin/media/");
 const refreshBlock = (key: BlockKey) => {
   revalidatePath("/admin/content/");
   revalidatePath(`/admin/content/${key}/`);
 };
 
+/** The browser reports where it put the file; storage is asked what is really there before anything is recorded. */
 export async function addImage(image: NewImage): Promise<ActionResult<Media>> {
-  const result = await attempt(() => api.createImage(image));
+  const result = await attempt(async () => {
+    const stored = await head(image.url).catch(() => null);
+    if (!stored || !stored.pathname.startsWith(uploadFolder)) {
+      throw new AdminApiError(422, "This photo was not found in the site's storage. Upload it again.");
+    }
+    return api.createImage({ ...image, url: stored.url, content_type: stored.contentType, size_bytes: stored.size });
+  });
   if (result.ok) refreshMedia();
   return result;
 }
@@ -49,14 +58,14 @@ export async function describeMedia(id: string, change: { alt?: string; title?: 
   return result;
 }
 
-/** The record goes first: once nothing points at the file, removing it from storage cannot break a page. */
+/** The library holds one record per file, and the record goes first: once nothing points at
+    the file, removing it from this site's own storage cannot break a page. */
 export async function removeMedia(id: string): Promise<ActionResult> {
   const result = await attempt(async () => {
     const media = (await api.listMedia()).find((item) => item.id === id);
+    const stored = media?.kind === "image" && media.url.startsWith("https://") ? await head(media.url).catch(() => null) : null;
     await api.deleteMedia(id);
-    if (media?.kind === "image" && media.url.startsWith("https://") && process.env.BLOB_READ_WRITE_TOKEN) {
-      await del(media.url).catch(() => undefined);
-    }
+    if (stored?.pathname.startsWith(uploadFolder)) await del(stored.url).catch(() => undefined);
   });
   if (result.ok) refreshMedia();
   return result;

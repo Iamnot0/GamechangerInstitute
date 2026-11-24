@@ -49,7 +49,7 @@ def youtube_watch_url(video_id: str) -> str:
 def https_file_host(url: str) -> str | None:
     """The host of an https URL that names a file, or nothing when the URL is anything else."""
     parts = _split(url)
-    if parts is None or parts.hostname is None or parts.scheme != "https" or parts.fragment:
+    if parts is None or parts.hostname is None or parts.scheme != "https" or parts.fragment or parts.query:
         return None
     return parts.hostname if len(parts.path) > 1 else None
 

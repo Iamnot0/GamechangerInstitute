@@ -71,6 +71,9 @@ async def add_media(
     asset = await repository.add(
         _new_asset(submission, allowed_hosts), actor_sub=staff.subject, actor_email=staff.email
     )
+    if asset is None:
+        field = "url" if submission.kind is MediaKind.IMAGE else "youtube_url"
+        raise invalid_fields(InvalidField((field,), "media_duplicate", "This is already in the media library."))
     log_staff_action(logger, staff, "add_media", media_id=asset.id)
     return _view(asset, [])
 

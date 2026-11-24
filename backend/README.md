@@ -89,7 +89,7 @@ Migrations connect with `DATABASE_URL_UNPOOLED` when it is set, otherwise `DATAB
 | `AUTH_AUTHORIZED_PARTIES` | required with `AUTH_ISSUER` | Comma-separated exact origins accepted in the token's `azp` claim, normally the staff console's origin |
 | `AUTH_STAFF_ROLES` | `admin,staff` | Values of the token's `role` claim that grant access |
 | `AUTH_STAFF_ORGANIZATION_ID` | required with `AUTH_ISSUER` | The staff organization's id (`org_...`). Only tokens whose `org_id` claim equals it are staff. |
-| `MEDIA_ALLOWED_HOSTS` | `.public.blob.vercel-storage.com` | Comma-separated hosts a recorded photo URL may use, always over https. A leading dot admits the subdomains of that name; without it the host must match exactly. |
+| `MEDIA_ALLOWED_HOSTS` | empty | The exact storage host recorded photo URLs may use, always over https: this project's Blob store, such as `abc123.public.blob.vercel-storage.com`. Empty refuses every photo. Avoid a leading-dot suffix on a shared storage domain: it would trust every other tenant's files. |
 
 ## Staff authentication
 

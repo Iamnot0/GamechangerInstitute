@@ -8,8 +8,13 @@ const crossOriginApi = apiUrl && /^https?:\/\//.test(apiUrl) ? ` ${new URL(apiUr
 const clerkOrigins = "https://*.clerk.accounts.dev https://*.clerk.com";
 const clerkChallenge = "https://challenges.cloudflare.com";
 
-// Photos uploaded from the staff console, and the stills of linked YouTube videos.
-const mediaOrigins = "https://*.public.blob.vercel-storage.com https://i.ytimg.com";
+// Photos uploaded from the staff console live on this project's own storage host and no other;
+// without MEDIA_HOST no storage host is trusted. The stills of linked YouTube videos come from ytimg.
+const mediaHost = process.env.MEDIA_HOST?.trim() || null;
+if (mediaHost && !/^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/.test(mediaHost)) {
+  throw new Error("MEDIA_HOST must be this project's Blob store host, such as abc123.public.blob.vercel-storage.com");
+}
+const mediaOrigins = `${mediaHost ? `https://${mediaHost} ` : ""}https://i.ytimg.com`;
 
 type Csp = { script?: string; connect?: string; img?: string; frame?: string; worker?: string };
 
@@ -59,7 +64,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
     remotePatterns: [
-      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      ...(mediaHost ? [{ protocol: "https" as const, hostname: mediaHost }] : []),
       { protocol: "https", hostname: "i.ytimg.com" },
     ],
   },

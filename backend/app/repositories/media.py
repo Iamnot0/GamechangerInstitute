@@ -4,12 +4,15 @@ from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import delete, or_, select, tuple_, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.block_schemas import BLOCK_LABELS, referenced_media_ids
 from app.domain import BlockKey, MediaKind
 from app.models import ContentBlock, MediaAsset, Post
 from app.pagination import PageCursor
+
+_DUPLICATE_URL_CONSTRAINT = "uq_media_assets_url"
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,11 +61,21 @@ class MediaRepository:
         statement = select(MediaAsset).where(MediaAsset.id.in_(media_ids), MediaAsset.kind == MediaKind.IMAGE)
         return (await self._session.scalars(statement)).all()
 
-    async def add(self, asset: MediaAsset, *, actor_sub: str, actor_email: str | None) -> MediaAsset:
+    async def add(self, asset: MediaAsset, *, actor_sub: str, actor_email: str | None) -> MediaAsset | None:
+        """Stores the asset, or returns nothing when the library already holds that URL.
+
+        One record per stored file is what makes it safe to delete the file when its record goes.
+        """
         asset.created_by_sub = actor_sub
         asset.created_by_email = actor_email
         self._session.add(asset)
-        await self._session.commit()
+        try:
+            await self._session.commit()
+        except IntegrityError as error:
+            await self._session.rollback()
+            if _DUPLICATE_URL_CONSTRAINT in str(error.orig):
+                return None
+            raise
         return asset
 
     async def change(self, media_id: UUID, changes: Mapping[str, str]) -> MediaAsset | None:

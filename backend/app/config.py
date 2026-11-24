@@ -80,8 +80,11 @@ class Settings(BaseSettings):
     auth_staff_roles: Annotated[tuple[str, ...], NoDecode] = ("admin", "staff")
     auth_staff_organization_id: str | None = None
     media_allowed_hosts: Annotated[tuple[str, ...], NoDecode] = Field(
-        default=(".public.blob.vercel-storage.com",),
-        description="Hosts photo URLs may use; a leading dot also admits subdomains.",
+        default=(),
+        description=(
+            "Hosts photo URLs may use: this project's own storage host. Empty refuses every photo, "
+            "so an unset value fails closed rather than trusting every tenant of a shared storage domain."
+        ),
     )
 
     @field_validator("database_url", mode="before")
