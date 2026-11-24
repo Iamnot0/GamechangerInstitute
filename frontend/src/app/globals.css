@@ -542,6 +542,10 @@
     fill: var(--color-mark-column);
   }
 
+  .pillar-mark__flute {
+    fill: var(--color-mark-ring);
+  }
+
   .main-nav__toggle {
     @apply inline-flex min-h-11 min-w-11 items-center justify-center gap-3 px-2 text-base font-semibold text-fg;
 
