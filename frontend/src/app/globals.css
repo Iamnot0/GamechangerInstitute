@@ -431,6 +431,55 @@
     }
   }
 
+  /* With a photo the page opens the way the home page does: the picture fills the band and a
+     brand-tinted scrim keeps every line of text above AA. The faint rings step aside for it. */
+  .page-intro--photo {
+    @apply relative isolate flex items-center overflow-hidden border-0 bg-forest-deep text-sage;
+    min-height: clamp(22rem, 44vw, 34rem);
+
+    &::before {
+      @apply hidden;
+    }
+
+    :focus-visible {
+      outline-color: var(--color-terracotta-soft);
+    }
+
+    .page-intro__context {
+      @apply text-gold;
+    }
+
+    .page-intro__title {
+      @apply text-headline text-paper;
+    }
+
+    .page-intro__lede {
+      @apply text-sage;
+    }
+  }
+
+  .page-intro__backdrop {
+    @apply absolute inset-0 -z-10;
+
+    &::after {
+      @apply absolute inset-0;
+      content: "";
+      background:
+        linear-gradient(180deg, rgb(16 48 42 / 0) 70%, rgb(16 48 42 / 0.9) 100%),
+        linear-gradient(180deg, rgb(16 48 42 / 0.8), rgb(16 48 42 / 0.8));
+
+      @variant lg {
+        background:
+          linear-gradient(180deg, rgb(16 48 42 / 0) 72%, rgb(16 48 42 / 0.6) 100%),
+          linear-gradient(90deg, rgb(16 48 42 / 0.94) 0%, rgb(16 48 42 / 0.86) 40%, rgb(16 48 42 / 0.36) 66%, rgb(16 48 42 / 0.14) 100%);
+      }
+    }
+  }
+
+  .page-intro__photo {
+    @apply size-full object-cover;
+  }
+
   .page-intro__context {
     @apply mb-6 text-sm font-semibold text-accent;
   }
@@ -612,23 +661,36 @@
     }
 
     @variant lg {
-      @apply static flex items-center gap-8 border-0 bg-transparent p-0 shadow-none;
+      @apply static flex items-center gap-6 border-0 bg-transparent p-0 shadow-none;
+    }
+
+    @variant xl {
+      @apply gap-8;
     }
   }
 
   .main-nav__list {
     @apply flex flex-col;
 
+    /* The serif is a little wider than the sans it replaced, so the links sit closer until there is room. */
     @variant lg {
-      @apply flex-row gap-7;
+      @apply flex-row gap-5;
+    }
+
+    @variant xl {
+      @apply gap-7;
     }
   }
 
   .main-nav__link {
-    @apply relative flex min-h-12 items-center whitespace-nowrap border-b border-line text-lg text-fg no-underline;
+    @apply relative flex min-h-12 items-center whitespace-nowrap border-b border-line font-display text-xl text-fg no-underline;
 
     @variant lg {
       @apply min-h-11 border-0 text-base;
+    }
+
+    @variant xl {
+      @apply text-lg;
     }
 
     &:hover {
@@ -764,7 +826,7 @@
     }
 
     a {
-      @apply inline-flex min-h-11 items-center text-sage no-underline;
+      @apply inline-flex min-h-11 items-center font-display text-lg text-sage no-underline;
     }
 
     a:hover {

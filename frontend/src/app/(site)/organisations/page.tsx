@@ -6,6 +6,7 @@ import { RolloutSection } from "@/components/sections/RolloutSection";
 import { SuccessStoriesSection } from "@/components/sections/SuccessStoriesSection";
 import { TracksSection } from "@/components/sections/TracksSection";
 import { PageIntro } from "@/components/ui/PageIntro";
+import { heroPhotos } from "@/content/heroes";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { pageMetadata } from "@/lib/metadata";
 import { breadcrumb } from "@/lib/structured-data";
@@ -22,6 +23,7 @@ export default function OrganisationsPage() {
     <>
       <PageIntro
         context="The corporate track"
+        photo={heroPhotos.organisations}
         title="Leaders change faster when the environment changes with them."
         lede="Cohorts of 8 to 12 leaders from one organisation, with a named executive sponsor and line sponsors who commit to dated changes in the workplace."
       />

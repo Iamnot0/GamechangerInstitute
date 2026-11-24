@@ -12,6 +12,7 @@ import { SafeguardsSection } from "@/components/sections/SafeguardsSection";
 import { TeamSection } from "@/components/sections/TeamSection";
 import { WeekByWeekSection } from "@/components/sections/WeekByWeekSection";
 import { PageIntro } from "@/components/ui/PageIntro";
+import { heroPhotos } from "@/content/heroes";
 import { registerLink } from "@/content/site";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { pageMetadata } from "@/lib/metadata";
@@ -31,6 +32,7 @@ export default function ProgrammePage() {
     <>
       <PageIntro
         context="ARISE Leadership Transformation Programme Series"
+        photo={heroPhotos.programme}
         title="Build the capacity. Change the environment. Measure the participation."
         lede="Each leader chooses two or three role outcomes that matter to them. Mentors, a coach and a sponsor then work on one agreed plan, reviewed against what happens at work."
       />

@@ -4,6 +4,7 @@ import { PatronSection } from "@/components/sections/PatronSection";
 import { PlatformsSection } from "@/components/sections/PlatformsSection";
 import { StewardsSection } from "@/components/sections/StewardsSection";
 import { PageIntro } from "@/components/ui/PageIntro";
+import { heroPhotos } from "@/content/heroes";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { pageMetadata } from "@/lib/metadata";
 import { breadcrumb } from "@/lib/structured-data";
@@ -20,6 +21,7 @@ export default function InstitutePage() {
     <>
       <PageIntro
         context="GameChanger Institute"
+        photo={heroPhotos.institute}
         title="An institute of leaders who have held the role."
         lede="GCI brings serving board members, CEOs, CFOs and CTOs together as stewards, and puts their experience to work for the leaders coming after them."
       />

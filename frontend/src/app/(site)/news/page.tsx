@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { PageIntro } from "@/components/ui/PageIntro";
+import { heroPhotos } from "@/content/heroes";
 import { Photo } from "@/components/ui/Photo";
 import { VideoEmbed } from "@/components/ui/VideoEmbed";
 import { VideoPlayer } from "@/components/ui/VideoPlayer";
@@ -79,7 +80,7 @@ export default async function NewsPage() {
 
   return (
     <>
-      <PageIntro context="GameChanger Institute" title="Media" />
+      <PageIntro context="GameChanger Institute" title="Media" photo={heroPhotos.media} />
       <div className="news">
         <div className="news__inner">
           {sections.length === 0 ? <p className="news__empty">Coming Soon</p> : null}
