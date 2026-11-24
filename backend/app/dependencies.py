@@ -8,7 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from app.auth.jwks import SigningKeysUnavailableError
 from app.auth.verifier import InvalidTokenError, NotStaffError, StaffMember, StaffTokenVerifier
 from app.client_ip import client_identity
+from app.repositories.content import ContentRepository
 from app.repositories.enquiries import EnquiryRepository
+from app.repositories.media import MediaRepository
+from app.repositories.posts import PostRepository
 from app.repositories.rate_limit_windows import RateLimitWindows
 from app.services.notification_budget import NotificationBudget
 from app.services.notifier import EnquiryNotifier
@@ -44,6 +47,22 @@ SessionDep = Annotated[AsyncSession, Depends(get_session, scope="function")]
 
 async def get_enquiry_repository(session: SessionDep) -> EnquiryRepository:
     return EnquiryRepository(session)
+
+
+async def get_media_repository(session: SessionDep) -> MediaRepository:
+    return MediaRepository(session)
+
+
+async def get_content_repository(session: SessionDep) -> ContentRepository:
+    return ContentRepository(session)
+
+
+async def get_post_repository(session: SessionDep) -> PostRepository:
+    return PostRepository(session)
+
+
+async def get_media_allowed_hosts(request: Request) -> tuple[str, ...]:
+    return _app_state(request)["settings"].media_allowed_hosts
 
 
 async def get_client_identity(request: Request) -> str | None:
@@ -104,6 +123,10 @@ async def require_staff(
 
 EngineDep = Annotated[AsyncEngine, Depends(get_engine)]
 EnquiryRepositoryDep = Annotated[EnquiryRepository, Depends(get_enquiry_repository)]
+MediaRepositoryDep = Annotated[MediaRepository, Depends(get_media_repository)]
+ContentRepositoryDep = Annotated[ContentRepository, Depends(get_content_repository)]
+PostRepositoryDep = Annotated[PostRepository, Depends(get_post_repository)]
+MediaAllowedHostsDep = Annotated[tuple[str, ...], Depends(get_media_allowed_hosts)]
 ClientIdentityDep = Annotated[str | None, Depends(get_client_identity)]
 RateLimiterDep = Annotated[FixedWindowRateLimiter, Depends(get_rate_limiter)]
 NotifierDep = Annotated[EnquiryNotifier, Depends(get_notifier)]

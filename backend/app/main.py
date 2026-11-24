@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 
-from app.api import admin, enquiries, health
+from app.api import admin, admin_content, admin_media, admin_posts, content, enquiries, health
 from app.auth.verifier import create_staff_verifier
 from app.config import Settings
 from app.db import create_engine, create_session_factory
@@ -29,6 +29,7 @@ from app.services.rate_limit import RateLimitPolicy
 from app.state import AppState
 
 _MAX_REQUEST_BODY_BYTES: Final = 16 * 1024
+_MAX_POST_BODY_BYTES: Final = 64 * 1024
 _SECONDS_PER_HOUR: Final = 3600
 _JWKS_FETCH_TIMEOUT_SECONDS: Final = 5.0
 _PURGE_INTERVAL_SECONDS: Final = 600
@@ -84,11 +85,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 max_age=600,
             ),
             Middleware(UnhandledErrorMiddleware),
-            Middleware(BodySizeLimitMiddleware, max_body_bytes=_MAX_REQUEST_BODY_BYTES),
+            Middleware(
+                BodySizeLimitMiddleware,
+                max_body_bytes=_MAX_REQUEST_BODY_BYTES,
+                # A post body of 10,000 characters can take four bytes each.
+                route_limits={admin_posts.router.prefix: _MAX_POST_BODY_BYTES},
+            ),
         ],
     )
     app.include_router(health.router)
     app.include_router(enquiries.router)
+    app.include_router(content.router)
     if settings.auth is not None:
         app.include_router(admin.router)
+        app.include_router(admin_media.router)
+        app.include_router(admin_content.router)
+        app.include_router(admin_posts.router)
     return app

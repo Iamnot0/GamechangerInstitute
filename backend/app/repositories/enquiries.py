@@ -98,13 +98,13 @@ class EnquiryRepository:
                 )
             )
         if after is not None:
-            statement = statement.where(tuple_(Enquiry.created_at, Enquiry.id) < tuple_(after.created_at, after.id))
+            statement = statement.where(tuple_(Enquiry.created_at, Enquiry.id) < tuple_(after.timestamp, after.id))
 
         rows = (await self._session.scalars(statement)).all()
         if len(rows) <= limit:
             return EnquiryPage(enquiries=rows, next_cursor=None)
         last = rows[limit - 1]
-        return EnquiryPage(enquiries=rows[:limit], next_cursor=PageCursor(created_at=last.created_at, id=last.id))
+        return EnquiryPage(enquiries=rows[:limit], next_cursor=PageCursor(timestamp=last.created_at, id=last.id))
 
     async def counts(self) -> EnquiryCounts:
         by_status = await self._session.execute(select(Enquiry.status, func.count()).group_by(Enquiry.status))

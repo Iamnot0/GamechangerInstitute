@@ -21,6 +21,8 @@ _ORIGIN = re.compile(r"https?://[^/\s]+")
 _HEADER_NAME = re.compile(r"[A-Za-z0-9-]+")
 _HTTPS_URL = re.compile(r"https://[^/\s]+(/\S*)?")
 _LOOPBACK_HTTP_URL = re.compile(r"http://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(/\S*)?")
+_HOST_LABEL = r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
+_HOST_OR_SUFFIX = re.compile(rf"\.?{_HOST_LABEL}(?:\.{_HOST_LABEL})+")
 
 
 class Environment(StrEnum):
@@ -77,13 +79,19 @@ class Settings(BaseSettings):
     auth_authorized_parties: Annotated[tuple[str, ...], NoDecode] = ()
     auth_staff_roles: Annotated[tuple[str, ...], NoDecode] = ("admin", "staff")
     auth_staff_organization_id: str | None = None
+    media_allowed_hosts: Annotated[tuple[str, ...], NoDecode] = Field(
+        default=(".public.blob.vercel-storage.com",),
+        description="Hosts photo URLs may use; a leading dot also admits subdomains.",
+    )
 
     @field_validator("database_url", mode="before")
     @classmethod
     def _use_asyncpg_driver(cls, value: object) -> object:
         return asyncpg_database_url(value) if isinstance(value, str) else value
 
-    @field_validator("cors_origins", "auth_authorized_parties", "auth_staff_roles", mode="before")
+    @field_validator(
+        "cors_origins", "auth_authorized_parties", "auth_staff_roles", "media_allowed_hosts", mode="before"
+    )
     @classmethod
     def _split_comma_separated(cls, value: object) -> object:
         if isinstance(value, str):
@@ -126,6 +134,16 @@ class Settings(BaseSettings):
         if url is not None and not (_HTTPS_URL.fullmatch(url) or _LOOPBACK_HTTP_URL.fullmatch(url)):
             raise ValueError("AUTH_JWKS_URL must be an https URL")
         return url
+
+    @field_validator("media_allowed_hosts")
+    @classmethod
+    def _require_host_names(cls, hosts: tuple[str, ...]) -> tuple[str, ...]:
+        if not all(_HOST_OR_SUFFIX.fullmatch(host) for host in hosts):
+            raise ValueError(
+                "MEDIA_ALLOWED_HOSTS must be lowercase host names such as cdn.example.com, "
+                "or .example.com to admit its subdomains"
+            )
+        return hosts
 
     @field_validator("trusted_client_ip_header")
     @classmethod

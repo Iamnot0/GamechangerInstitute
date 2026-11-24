@@ -26,3 +26,28 @@ class EnquiryStatus(StrEnum):
 
 class EnquiryAction(StrEnum):
     STATUS_CHANGED = "status_changed"
+
+
+class MediaKind(StrEnum):
+    IMAGE = "image"
+    VIDEO = "video"
+
+
+class ImageContentType(StrEnum):
+    JPEG = "image/jpeg"
+    PNG = "image/png"
+    WEBP = "image/webp"
+
+
+class BlockKey(StrEnum):
+    SUCCESS_STORIES = "success_stories"
+    CLIENT_LOGOS = "client_logos"
+    FOUNDER = "founder"
+    STEWARDS = "stewards"
+    PLATFORMS = "platforms"
+    PATRON = "patron"
+
+
+class PostStatus(StrEnum):
+    DRAFT = "draft"
+    PUBLISHED = "published"

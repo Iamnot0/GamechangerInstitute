@@ -20,6 +20,16 @@ def plain_text(value: str) -> str:
     return value
 
 
+def required_text(value: str) -> str:
+    if not value:
+        raise PydanticCustomError("required_text", "This field is required.")
+    return value
+
+
+def _unix_newlines(value: object) -> object:
+    return value.replace("\r\n", "\n").replace("\r", "\n") if isinstance(value, str) else value
+
+
 def normalised_email(value: str) -> str:
     try:
         return validate_email(value, check_deliverability=False).normalized.lower()
@@ -34,3 +44,4 @@ def _blank_as_none(value: object) -> object:
 
 
 BlankAsNone = BeforeValidator(_blank_as_none)
+UnixNewlines = BeforeValidator(_unix_newlines)

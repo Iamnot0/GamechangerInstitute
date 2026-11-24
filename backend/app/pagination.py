@@ -8,13 +8,13 @@ from uuid import UUID
 
 @dataclass(frozen=True, slots=True)
 class PageCursor:
-    """Position after the last row of a page ordered by (created_at desc, id desc), encoded as an opaque token."""
+    """Position after the last row of a page ordered by (timestamp desc, id desc), encoded as an opaque token."""
 
-    created_at: datetime
+    timestamp: datetime
     id: UUID
 
     def encode(self) -> str:
-        raw = f"{self.created_at.isoformat()}|{self.id}".encode()
+        raw = f"{self.timestamp.isoformat()}|{self.id}".encode()
         return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
 
     @classmethod
@@ -23,10 +23,10 @@ class PageCursor:
             raw = base64.b64decode(token + "=" * (-len(token) % 4), altchars=b"-_", validate=True).decode()
         except binascii.Error as exc:
             raise ValueError("cursor is not base64url") from exc
-        created_at, separator, identifier = raw.partition("|")
+        timestamp, separator, identifier = raw.partition("|")
         if not separator:
             raise ValueError("cursor has no separator")
-        moment = datetime.fromisoformat(created_at)
+        moment = datetime.fromisoformat(timestamp)
         if moment.tzinfo is None:
             raise ValueError("cursor timestamp has no time zone")
-        return cls(created_at=moment, id=UUID(identifier))
+        return cls(timestamp=moment, id=UUID(identifier))

@@ -4,7 +4,6 @@ from typing import Annotated, Final
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.exceptions import RequestValidationError
 
 from app.admin_schemas import (
     EnquiryDetail,
@@ -13,10 +12,10 @@ from app.admin_schemas import (
     EnquirySummary,
     StatusChange,
 )
-from app.auth.verifier import StaffMember
+from app.api.cursors import decode_cursor
+from app.api.staff_actions import log_staff_action
 from app.dependencies import EnquiryRepositoryDep, StaffDep, require_json_body, require_staff
 from app.domain import EnquiryKind, EnquiryStatus
-from app.pagination import PageCursor
 from app.problems import problem_responses
 from app.repositories.enquiries import StatusChangeOutcome
 
@@ -47,10 +46,10 @@ async def list_enquiries(
         status=status,
         kind=kind,
         search=q.strip() if q and q.strip() else None,
-        after=_decode_cursor(cursor),
+        after=decode_cursor(cursor),
         limit=limit,
     )
-    _log_action(staff, "list_enquiries")
+    log_staff_action(logger, staff, "list_enquiries")
     return EnquiryPage(
         items=[EnquiryListItem.model_validate(enquiry) for enquiry in page.enquiries],
         next_cursor=page.next_cursor.encode() if page.next_cursor else None,
@@ -60,7 +59,7 @@ async def list_enquiries(
 @router.get("/summary")
 async def summarise_enquiries(staff: StaffDep, repository: EnquiryRepositoryDep) -> EnquirySummary:
     counts = await repository.counts()
-    _log_action(staff, "summarise_enquiries")
+    log_staff_action(logger, staff, "summarise_enquiries")
     return EnquirySummary(total=sum(counts.by_status.values()), by_status=counts.by_status, by_kind=counts.by_kind)
 
 
@@ -69,7 +68,7 @@ async def get_enquiry(enquiry_id: UUID, staff: StaffDep, repository: EnquiryRepo
     enquiry = await repository.detail(enquiry_id)
     if enquiry is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=_NOT_FOUND_DETAIL)
-    _log_action(staff, "view_enquiry", enquiry_id)
+    log_staff_action(logger, staff, "view_enquiry", enquiry_id=enquiry_id)
     return EnquiryDetail.model_validate(enquiry)
 
 
@@ -94,33 +93,8 @@ async def change_enquiry_status(
     if outcome is StatusChangeOutcome.CONFLICT:
         raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=_CONFLICT_DETAIL)
 
-    _log_action(staff, "change_status", enquiry_id)
+    log_staff_action(logger, staff, "change_status", enquiry_id=enquiry_id)
     enquiry = await repository.detail(enquiry_id)
     if enquiry is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=_NOT_FOUND_DETAIL)
     return EnquiryDetail.model_validate(enquiry)
-
-
-def _decode_cursor(cursor: str | None) -> PageCursor | None:
-    if cursor is None:
-        return None
-    try:
-        return PageCursor.decode(cursor)
-    except ValueError:
-        raise RequestValidationError(
-            [
-                {
-                    "type": "cursor_invalid",
-                    "loc": ("query", "cursor"),
-                    "msg": "This page link is no longer valid. Start again from the first page.",
-                    "input": cursor,
-                }
-            ]
-        ) from None
-
-
-def _log_action(staff: StaffMember, action: str, enquiry_id: UUID | None = None) -> None:
-    extra: dict[str, str] = {"actor_sub": staff.subject, "action": action}
-    if enquiry_id is not None:
-        extra["enquiry_id"] = str(enquiry_id)
-    logger.info("staff action", extra=extra)

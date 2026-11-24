@@ -2,6 +2,7 @@ import logging
 import re
 import time
 import uuid
+from collections.abc import Mapping
 from typing import Final
 
 from starlette.datastructures import Headers, MutableHeaders
@@ -18,8 +19,8 @@ _VALID_REQUEST_ID: Final = re.compile(r"[A-Za-z0-9._-]{1,128}")
 _SECURITY_HEADERS: Final = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
-    "Cache-Control": "no-store",
 }
+_DEFAULT_CACHE_CONTROL: Final = "no-store"
 
 
 class RootPathMiddleware:
@@ -89,6 +90,8 @@ class RequestContextMiddleware:
 
 
 class SecurityHeadersMiddleware:
+    """Hardens every response, and keeps it out of caches unless the route set its own Cache-Control."""
+
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
@@ -102,27 +105,33 @@ class SecurityHeadersMiddleware:
                 headers = MutableHeaders(scope=message)
                 for name, value in _SECURITY_HEADERS.items():
                     headers[name] = value
+                headers.setdefault("Cache-Control", _DEFAULT_CACHE_CONTROL)
             await send(message)
 
         await self.app(scope, receive, send_with_security_headers)
 
 
 class BodySizeLimitMiddleware:
-    """Rejects request bodies over the limit, judged by the declared Content-Length and by the bytes received."""
+    """Rejects request bodies over the limit, judged by the declared Content-Length and by the bytes received.
 
-    def __init__(self, app: ASGIApp, *, max_body_bytes: int) -> None:
+    Routes at or under a prefix in `route_limits` take that prefix's limit instead of the default.
+    """
+
+    def __init__(self, app: ASGIApp, *, max_body_bytes: int, route_limits: Mapping[str, int] | None = None) -> None:
         self.app = app
         self.max_body_bytes = max_body_bytes
-        self.detail = f"The request body must not exceed {max_body_bytes // 1024} KiB."
+        self.route_limits = dict(route_limits or {})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
+        limit = self._limit_for(_route_path(scope))
+        detail = f"The request body must not exceed {limit // 1024} KiB."
         declared_length = Headers(scope=scope).get("content-length", "")
-        if declared_length.isdigit() and int(declared_length) > self.max_body_bytes:
-            await problem_response(413, self.detail)(scope, receive, send)
+        if declared_length.isdigit() and int(declared_length) > limit:
+            await problem_response(413, detail)(scope, receive, send)
             return
 
         received_bytes = 0
@@ -132,11 +141,23 @@ class BodySizeLimitMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received_bytes += len(message.get("body", b""))
-                if received_bytes > self.max_body_bytes:
-                    raise HTTPException(status_code=413, detail=self.detail)
+                if received_bytes > limit:
+                    raise HTTPException(status_code=413, detail=detail)
             return message
 
         await self.app(scope, receive_within_limit, send)
+
+    def _limit_for(self, route_path: str) -> int:
+        for prefix, limit in self.route_limits.items():
+            if route_path == prefix or route_path.startswith(f"{prefix}/"):
+                return limit
+        return self.max_body_bytes
+
+
+def _route_path(scope: Scope) -> str:
+    path: str = scope["path"]
+    root_path: str = scope.get("root_path", "")
+    return path[len(root_path) :] if root_path and path.startswith(f"{root_path}/") else path
 
 
 class UnhandledErrorMiddleware:

@@ -6,6 +6,8 @@ from pydantic import (
     AwareDatetime,
     BaseModel,
     ConfigDict,
+    Field,
+    StrictInt,
     StringConstraints,
     ValidationInfo,
     field_validator,
@@ -79,3 +81,11 @@ class StatusChange(BaseModel):
         if status is info.data.get("expected_status"):
             raise PydanticCustomError("status_unchanged", "Choose a different status.")
         return status
+
+
+class VersionGuard(BaseModel):
+    """The version the client last read; a write goes through only while the record is still at it."""
+
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+    expected_version: Annotated[StrictInt, Field(ge=0)]
