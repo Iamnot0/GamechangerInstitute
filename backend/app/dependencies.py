@@ -94,7 +94,7 @@ async def get_notifier(request: Request, session: SessionDep) -> EnquiryNotifier
 async def get_auth_mailer(request: Request, session: SessionDep) -> StaffAuthMailer:
     state = _app_state(request)
     settings = state["settings"]
-    budget = NotificationBudget(session, state["notification_budget_policy"])
+    budget = NotificationBudget(session, state["staff_mail_budget_policy"])
     return StaffAuthMailer(settings.smtp, settings.auth_sender, settings.site_url, budget)
 
 

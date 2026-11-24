@@ -22,6 +22,7 @@ class StaffDeleteOutcome(StrEnum):
     DELETED = "deleted"
     NOT_FOUND = "not_found"
     SELF_DELETE = "self_delete"
+    ACTOR_REMOVED = "actor_removed"
 
 
 class StaffRepository:
@@ -47,11 +48,27 @@ class StaffRepository:
         return created
 
     async def delete_user(self, user_id: UUID, *, actor_id: UUID) -> StaffDeleteOutcome:
+        """Removes a member on behalf of `actor_id`.
+
+        Both rows are locked, in id order, before anything is deleted. Two administrators removing each other
+        therefore queue, and the second finds their own access already gone instead of emptying the table.
+        """
         if user_id == actor_id:
             return StaffDeleteOutcome.SELF_DELETE
-        deleted = await self._session.scalar(delete(StaffUser).where(StaffUser.id == user_id).returning(StaffUser.id))
+        held = set(
+            await self._session.scalars(
+                select(StaffUser.id)
+                .where(StaffUser.id.in_([user_id, actor_id]))
+                .order_by(StaffUser.id)
+                .with_for_update()
+            )
+        )
+        if actor_id not in held or user_id not in held:
+            await self._session.rollback()
+            return StaffDeleteOutcome.ACTOR_REMOVED if actor_id not in held else StaffDeleteOutcome.NOT_FOUND
+        await self._session.execute(delete(StaffUser).where(StaffUser.id == user_id))
         await self._session.commit()
-        return StaffDeleteOutcome.DELETED if deleted is not None else StaffDeleteOutcome.NOT_FOUND
+        return StaffDeleteOutcome.DELETED
 
     async def store_login_code(self, email: str, code_hash: str) -> datetime:
         expires_at = datetime.now(UTC) + LOGIN_CODE_TTL
@@ -91,9 +108,7 @@ class StaffRepository:
                 await self._session.execute(delete(StaffLoginCode).where(StaffLoginCode.email == normalised))
             else:
                 await self._session.execute(
-                    update(StaffLoginCode)
-                    .where(StaffLoginCode.email == normalised)
-                    .values(attempts=next_attempts)
+                    update(StaffLoginCode).where(StaffLoginCode.email == normalised).values(attempts=next_attempts)
                 )
             await self._session.commit()
             return None

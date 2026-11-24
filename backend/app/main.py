@@ -63,6 +63,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     key="notification-budget:enquiries",
                     window=FixedWindow(settings.notifications_per_hour, _SECONDS_PER_HOUR),
                 ),
+                staff_mail_budget_policy=BudgetPolicy(
+                    key="notification-budget:staff-auth",
+                    window=FixedWindow(settings.notifications_per_hour, _SECONDS_PER_HOUR),
+                ),
             )
             yield state
 

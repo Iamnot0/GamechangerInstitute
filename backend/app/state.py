@@ -18,3 +18,4 @@ class AppState(TypedDict):
     auth_rate_limit_policy: RateLimitPolicy
     purge_cadence: Cadence
     notification_budget_policy: BudgetPolicy
+    staff_mail_budget_policy: BudgetPolicy

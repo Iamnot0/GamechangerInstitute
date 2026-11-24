@@ -3,6 +3,7 @@ from http import HTTPStatus
 from typing import Final
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.verifier import (
     generate_login_code,
@@ -14,6 +15,7 @@ from app.dependencies import (
     AuthMailerDep,
     AuthRateLimiterDep,
     ClientIdentityDep,
+    SessionDep,
     StaffAuthSecretDep,
     StaffDep,
     StaffRepositoryDep,
@@ -22,6 +24,7 @@ from app.dependencies import (
 )
 from app.domain import StaffRole
 from app.problems import problem_responses
+from app.services.rate_limit import FixedWindowRateLimiter
 from app.staff_schemas import (
     AuthenticatedSession,
     CodeRequest,
@@ -38,6 +41,26 @@ _RATE_LIMIT_DETAIL: Final = "Too many sign-in attempts from this network. Please
 _INVALID_CODE_DETAIL: Final = "That code is invalid or has expired. Request a new code and try again."
 
 
+async def _count_attempt(
+    rate_limiter: FixedWindowRateLimiter, client_identity: str | None, session: AsyncSession
+) -> None:
+    """Counts an allowed sign-in attempt and commits the count at once, so it stands whatever the attempt leads to.
+
+    Left to the request's own transaction, the count would be kept only on the paths that happen to commit,
+    and the limit would then tell a caller which emails belong to staff.
+    """
+    decision = await rate_limiter.hit(client_identity)
+    if decision.allowed:
+        await session.commit()
+    else:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=_RATE_LIMIT_DETAIL,
+            headers={"Retry-After": str(decision.retry_after_seconds)},
+        )
+
+
 @router.post(
     "/request-code",
     status_code=status.HTTP_202_ACCEPTED,
@@ -48,17 +71,12 @@ async def request_login_code(
     payload: CodeRequest,
     client_identity: ClientIdentityDep,
     rate_limiter: AuthRateLimiterDep,
+    session: SessionDep,
     repository: StaffRepositoryDep,
     mailer: AuthMailerDep,
     secret: StaffAuthSecretDep,
 ) -> CodeRequested:
-    decision = await rate_limiter.hit(client_identity)
-    if not decision.allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=_RATE_LIMIT_DETAIL,
-            headers={"Retry-After": str(decision.retry_after_seconds)},
-        )
+    await _count_attempt(rate_limiter, client_identity, session)
 
     user = await repository.find_by_email(payload.email)
     if user is not None:
@@ -82,16 +100,11 @@ async def verify_login_code(
     payload: CodeVerification,
     client_identity: ClientIdentityDep,
     rate_limiter: AuthRateLimiterDep,
+    session: SessionDep,
     repository: StaffRepositoryDep,
     secret: StaffAuthSecretDep,
 ) -> AuthenticatedSession:
-    decision = await rate_limiter.hit(client_identity)
-    if not decision.allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=_RATE_LIMIT_DETAIL,
-            headers={"Retry-After": str(decision.retry_after_seconds)},
-        )
+    await _count_attempt(rate_limiter, client_identity, session)
 
     candidate_hash = hash_login_code(secret, payload.email, payload.code)
     user = await repository.verify_and_consume_code(payload.email, candidate_hash)

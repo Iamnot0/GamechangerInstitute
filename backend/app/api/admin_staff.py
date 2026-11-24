@@ -23,6 +23,7 @@ router = APIRouter(
 _ALREADY_EXISTS_DETAIL: Final = "A staff member with that email address already has access."
 _NOT_FOUND_DETAIL: Final = "This staff member does not exist."
 _SELF_DELETE_DETAIL: Final = "You cannot remove your own staff access."
+_ACCESS_ENDED_DETAIL: Final = "Your staff access has been removed. Sign in again."
 
 
 @router.get("")
@@ -59,4 +60,10 @@ async def remove_staff(user_id: UUID, admin: AdminDep, repository: StaffReposito
         raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=_SELF_DELETE_DETAIL)
     if outcome is StaffDeleteOutcome.NOT_FOUND:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=_NOT_FOUND_DETAIL)
+    if outcome is StaffDeleteOutcome.ACTOR_REMOVED:
+        raise HTTPException(
+            status_code=HTTPStatus.UNAUTHORIZED,
+            detail=_ACCESS_ENDED_DETAIL,
+            headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
+        )
     log_staff_action(logger, admin, "remove_staff", staff_user_id=user_id)
