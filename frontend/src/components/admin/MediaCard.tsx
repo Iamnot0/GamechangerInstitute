@@ -44,8 +44,14 @@ export function MediaCard({ media }: { media: Media }) {
           <p className="media-card__use">On the site in: {media.used_in.join(", ")}</p>
         ) : (
           <p className="media-card__use">
-            Not on the site yet. Add it under <Link href="/admin/content/">Content</Link>
-            {isImage ? " or as the cover of a " : " or to a "}
+            Not on the site yet.{" "}
+            {isImage ? (
+              <>
+                Add it under <Link href="/admin/content/">Content</Link> or as the cover of a{" "}
+              </>
+            ) : (
+              "Add it to a "
+            )}
             <Link href="/admin/posts/">News post</Link>.
           </p>
         )}
