@@ -1054,8 +1054,8 @@
     transform-origin: 50% 100%;
   }
 
-  .hero__context {
-    @apply mt-8 font-display text-xl font-bold italic text-sage;
+  .hero__tagline {
+    @apply mt-6 font-display text-xl font-bold italic text-sage;
 
     @variant lg {
       @apply text-2xl;
@@ -1064,10 +1064,7 @@
 
   .hero__title {
     @apply text-display text-paper;
-
-    @variant xl {
-      @apply text-[6rem];
-    }
+    font-size: clamp(2.3rem, 1.6rem + 3.55vw, 4.75rem);
 
     em {
       @apply italic text-sage;
@@ -1079,7 +1076,7 @@
   }
 
   .hero__actions {
-    @apply mt-10 flex flex-wrap items-center gap-4;
+    @apply mt-8 flex flex-wrap items-center gap-4;
   }
 
   .glance {
@@ -3185,15 +3182,19 @@
     &:nth-child(4) {
       animation-delay: 210ms;
     }
+
+    &:nth-child(5) {
+      animation-delay: 280ms;
+    }
   }
 
-  .hero__context,
+  .hero__tagline,
   .hero__lede,
   .hero__actions {
     animation: copy-rise 1s cubic-bezier(0.33, 1, 0.68, 1) both;
   }
 
-  .hero__context {
+  .hero__tagline {
     animation-delay: 300ms;
   }
 
