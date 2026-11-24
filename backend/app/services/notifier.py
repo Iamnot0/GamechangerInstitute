@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+from collections.abc import Callable, Mapping
 from datetime import datetime
 from email.message import EmailMessage
 from email.utils import format_datetime, make_msgid
@@ -13,6 +14,7 @@ from app.config import SmtpConfig
 from app.domain import EnquiryKind, RoleTransition
 from app.models import Enquiry
 from app.repositories.enquiries import EnquiryRepository
+from app.services.email_layout import Action, EmailContent, Highlight, render_html, render_text
 from app.services.notification_budget import NotificationBudget
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,26 @@ _KIND_LABELS: Final = {
     EnquiryKind.INDIVIDUAL: "Individual",
     EnquiryKind.ORGANISATION: "Organisation",
     EnquiryKind.GENERAL: "General",
+}
+_PROGRAMME: Final = "ARISE Leadership Transformation Programme Series"
+_NEXT_STEPS: Final = (
+    (
+        "An entry conversation",
+        "Your concerns, the role outcome you want, the support you need, and whether the programme is suitable.",
+    ),
+    (
+        "A clear account of the programme",
+        "What it can deliver, who will see your record, and how reviews work, before you commit to anything.",
+    ),
+    (
+        "Enrolment for the pilot cohort",
+        "Twelve leaders in circles of four, matched with steward mentors and a sponsor.",
+    ),
+)
+_FOLLOW_UP: Final[Mapping[EnquiryKind, Callable[[str], Action | None]]] = {
+    EnquiryKind.INDIVIDUAL: lambda site_url: Action("Read about the programme", f"{site_url}/programme/"),
+    EnquiryKind.ORGANISATION: lambda site_url: Action("See the corporate track", f"{site_url}/organisations/"),
+    EnquiryKind.GENERAL: lambda _site_url: None,
 }
 _ROLE_TRANSITION_LABELS: Final = {
     RoleTransition.FIRST_TIME_MANAGER: "First-time manager",
@@ -41,22 +63,27 @@ class EnquiryNotifier:
     for the team to review.
     """
 
-    def __init__(self, smtp: SmtpConfig | None, budget: NotificationBudget, enquiries: EnquiryRepository) -> None:
+    def __init__(
+        self, smtp: SmtpConfig | None, budget: NotificationBudget, enquiries: EnquiryRepository, site_url: str
+    ) -> None:
         self._smtp = smtp
         self._budget = budget
         self._enquiries = enquiries
+        self._site_url = site_url
 
     async def notify(self, enquiry: Enquiry) -> None:
         log_context = {"enquiry_id": str(enquiry.id)}
-        if self._smtp is None:
+        smtp = self._smtp
+        if smtp is None:
             logger.info("notification skipped: smtp not configured", extra=log_context)
             return
         if not await self._budget.spend():
             logger.warning("notification budget exceeded", extra=log_context)
             return
 
-        internal_sent = await self._deliver(
-            _compose_internal(enquiry, sender=self._smtp.mail_from, recipient=self._smtp.notify_to),
+        internal_sent = await _deliver(
+            smtp,
+            _compose_internal(enquiry, sender=smtp.mail_from, recipient=smtp.notify_to),
             log_context=log_context | {"mail_kind": "internal"},
         )
         if internal_sent:
@@ -65,33 +92,32 @@ class EnquiryNotifier:
             except SQLAlchemyError as exc:
                 logger.error("notification sent but not recorded", extra=log_context | {"error": type(exc).__name__})
 
-        await self._deliver(
-            _compose_confirmation(enquiry, sender=self._smtp.mail_from, reply_to=self._smtp.notify_to),
+        await _deliver(
+            smtp,
+            _compose_confirmation(enquiry, sender=smtp.mail_from, reply_to=smtp.notify_to, site_url=self._site_url),
             log_context=log_context | {"mail_kind": "confirmation"},
         )
 
-    async def _deliver(self, message: EmailMessage, *, log_context: dict[str, str]) -> bool:
-        assert self._smtp is not None  # noqa: S101
-        try:
-            async with asyncio.timeout(self._smtp.timeout_seconds):
-                await aiosmtplib.send(
-                    message,
-                    hostname=self._smtp.host,
-                    port=self._smtp.port,
-                    username=self._smtp.username,
-                    password=self._smtp.password,
-                    start_tls=self._smtp.starttls,
-                    timeout=self._smtp.timeout_seconds,
-                )
-        except (aiosmtplib.SMTPException, TimeoutError) as exc:
-            smtp_code = exc.code if isinstance(exc, aiosmtplib.SMTPResponseException) else None
-            logger.error(
-                "notification failed", extra=log_context | {"error": type(exc).__name__, "smtp_code": smtp_code}
-            )
-            return False
 
-        logger.info("notification sent", extra=log_context)
-        return True
+async def _deliver(smtp: SmtpConfig, message: EmailMessage, *, log_context: dict[str, str]) -> bool:
+    try:
+        async with asyncio.timeout(smtp.timeout_seconds):
+            await aiosmtplib.send(
+                message,
+                hostname=smtp.host,
+                port=smtp.port,
+                username=smtp.username,
+                password=smtp.password,
+                start_tls=smtp.starttls,
+                timeout=smtp.timeout_seconds,
+            )
+    except (aiosmtplib.SMTPException, TimeoutError) as exc:
+        smtp_code = exc.code if isinstance(exc, aiosmtplib.SMTPResponseException) else None
+        logger.error("notification failed", extra=log_context | {"error": type(exc).__name__, "smtp_code": smtp_code})
+        return False
+
+    logger.info("notification sent", extra=log_context)
+    return True
 
 
 def _compose_internal(enquiry: Enquiry, *, sender: str, recipient: str) -> EmailMessage:
@@ -107,7 +133,7 @@ def _compose_internal(enquiry: Enquiry, *, sender: str, recipient: str) -> Email
     return message
 
 
-def _compose_confirmation(enquiry: Enquiry, *, sender: str, reply_to: str) -> EmailMessage:
+def _compose_confirmation(enquiry: Enquiry, *, sender: str, reply_to: str, site_url: str) -> EmailMessage:
     message = EmailMessage()
     message["From"] = f"GameChanger Institute <{sender}>"
     message["To"] = enquiry.email
@@ -115,7 +141,9 @@ def _compose_confirmation(enquiry: Enquiry, *, sender: str, reply_to: str) -> Em
     message["Subject"] = "Your registration of interest with GameChanger Institute"
     message["Date"] = format_datetime(enquiry.created_at)
     message["Message-ID"] = make_msgid(domain=sender.rpartition("@")[2])
-    message.set_content(_render_confirmation_body(enquiry))
+    content = _confirmation_content(enquiry, site_url)
+    message.set_content(render_text(content, site_url))
+    message.add_alternative(render_html(content, site_url), subtype="html")
     return message
 
 
@@ -127,27 +155,29 @@ def _safe_greeting(full_name: str) -> str:
     return f"Dear {cleaned}," if 1 <= len(cleaned) <= 40 else "Hello,"
 
 
-def _render_confirmation_body(enquiry: Enquiry) -> str:
-    kind = _KIND_LABELS[EnquiryKind(enquiry.kind)].lower()
-    return "\n".join(
-        [
-            _safe_greeting(enquiry.full_name),
-            "",
-            f"Thank you for getting in touch with GameChanger Institute. We have received your {kind} enquiry.",
-            "",
-            "For the ARISE Leadership Transformation Programme Series, the next step is an entry conversation "
-            "about the role outcome you want, the support you need, and whether the programme is the right fit.",
-            "",
-            f"Reference: {enquiry.id}",
-            "",
+def _confirmation_content(enquiry: Enquiry, site_url: str) -> EmailContent:
+    kind = EnquiryKind(enquiry.kind)
+    about_programme = kind is not EnquiryKind.GENERAL
+    return EmailContent(
+        preheader=f"We have received your registration of interest. Reference {enquiry.id}.",
+        heading="We have received your registration",
+        greeting=_safe_greeting(enquiry.full_name),
+        intro=[
+            "Thank you for getting in touch with GameChanger Institute. "
+            f"We have received your {_KIND_LABELS[kind].lower()} enquiry.",
+        ],
+        highlight=Highlight("Your reference", str(enquiry.id)),
+        steps_title=f"What happens next with the {_PROGRAMME}" if about_programme else None,
+        steps=_NEXT_STEPS if about_programme else (),
+        outro=[
             "A member of our team will review your note and reply from this address. "
             "If you would like to share anything further in the meantime, simply reply to this email.",
-            "",
-            "Warm regards,",
-            "GameChanger Institute",
-            "https://gamechanger.institute",
-            "",
-        ]
+        ],
+        action=_FOLLOW_UP[kind](site_url),
+        footnote=(
+            "You are receiving this email because you registered interest on our website. "
+            f"The {_PROGRAMME} is ICF-informed. It is not accredited or endorsed by the World Health Organization."
+        ),
     )
 
 

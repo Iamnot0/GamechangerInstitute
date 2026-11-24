@@ -88,7 +88,8 @@ async def get_auth_rate_limiter(request: Request, session: SessionDep) -> FixedW
 async def get_notifier(request: Request, session: SessionDep) -> EnquiryNotifier:
     state = _app_state(request)
     budget = NotificationBudget(session, state["notification_budget_policy"])
-    return EnquiryNotifier(state["settings"].smtp, budget, EnquiryRepository(session))
+    settings = state["settings"]
+    return EnquiryNotifier(settings.smtp, budget, EnquiryRepository(session), settings.site_url)
 
 
 async def get_auth_mailer(request: Request, session: SessionDep) -> StaffAuthMailer:
