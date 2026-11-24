@@ -2961,17 +2961,32 @@
     }
   }
 
+  /* Comfortable under a thumb on a phone, compact beside the name on a desktop. */
   .console__tool {
-    @apply flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent text-muted;
-    border-radius: var(--radius-control);
+    @apply flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-muted;
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out;
 
     &:hover {
       @apply bg-canvas text-fg;
     }
+
+    .console-icon {
+      @apply size-[1.125rem];
+    }
+
+    @variant lg {
+      @apply size-8;
+
+      .console-icon {
+        @apply size-4;
+      }
+    }
   }
 
   .console__tool--round {
-    @apply rounded-full border border-line-strong;
+    @apply border border-line-strong;
   }
 
   .console__toggle {
