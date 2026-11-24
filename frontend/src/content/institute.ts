@@ -4,7 +4,7 @@ export const founder = {
   name: "Dr Benjamin Mah",
   shortName: "DrM",
   title: "Founder and Programme Director",
-  role: "Dr Mah founded GameChanger Institute and directs the ARISE Leadership Transformation Program Series: setting its standards, making every mentor match, and holding supervision and the escalation route.",
+  role: "Dr Mah founded GameChanger Institute and directs the ARISE Leadership Transformation Programme Series: setting its standards, making every mentor match, and holding supervision and the escalation route.",
   feature:
     "Featured in Singapore Tatler’s August 2017 Master Minds issue: “Benjamin Mah and other disrupters who are changing the way we live.”",
   portrait: {
@@ -23,7 +23,7 @@ export const stewards = {
 export const method = {
   title: "One method across everything we run",
   stages: ["Scope", "Frame", "Ideate", "Build"],
-  body: "GCI’s design-thinking method frames every engagement. The ARISE Leadership Transformation Program Series extends it with a fifth stage, Sustain, because a result that fades after the programme is not yet a result.",
+  body: "GCI’s design-thinking method frames every engagement. The ARISE Leadership Transformation Programme Series extends it with a fifth stage, Sustain, because a result that fades after the programme is not yet a result.",
 } as const;
 
 export const platforms: readonly { name: string; body: string; photo: Photo }[] = [

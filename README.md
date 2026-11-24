@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>From capacity to performance.</strong><br>
-  Website and enquiry platform for the ARISE Leadership Transformation Program Series.
+  Website and enquiry platform for the ARISE Leadership Transformation Programme Series.
 </p>
 
 <p align="center">

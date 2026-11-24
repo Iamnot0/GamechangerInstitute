@@ -29,7 +29,7 @@ export function SiteFooter() {
 
         <div className="site-footer__legal">
           <p>
-            The ARISE Leadership Transformation Program Series is ICF-informed.
+            The ARISE Leadership Transformation Programme Series is ICF-informed.
             It is not accredited or endorsed by the World Health Organization.
           </p>
           <p>

@@ -20,7 +20,7 @@ const text = Source_Sans_3({
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: `ARISE Leadership Transformation Program Series · ${site.name}`,
+    default: `ARISE Leadership Transformation Programme Series · ${site.name}`,
     template: `%s · ${site.name}`,
   },
   description: site.description,

@@ -12,7 +12,7 @@ export function HomeHero() {
             <em className="hero__word">ARISE</em>{" "}
             <span className="hero__word">Leadership</span>{" "}
             <span className="hero__word">Transformation</span>{" "}
-            <span className="hero__word">Program</span>{" "}
+            <span className="hero__word">Programme</span>{" "}
             <span className="hero__word">Series</span>
           </h1>
           <p className="hero__tagline">From capacity to performance.</p>

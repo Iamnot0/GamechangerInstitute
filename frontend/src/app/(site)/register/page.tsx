@@ -6,7 +6,7 @@ import { RegisterFormWithTrack } from "@/components/forms/RegisterFormWithTrack"
 export const metadata: Metadata = {
   title: "Register interest",
   description:
-    "Register interest in the ARISE Leadership Transformation Program Series pilot, for yourself or for a cohort from your organisation.",
+    "Register interest in the ARISE Leadership Transformation Programme Series pilot, for yourself or for a cohort from your organisation.",
   alternates: { canonical: "/register/" },
 };
 
