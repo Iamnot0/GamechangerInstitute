@@ -58,7 +58,7 @@
   --color-mark-column: #7f6535;
   --color-mark-suffix: #7f6535;
 
-  --ornament-opacity: 0.75;
+  --ornament-opacity: 0.85;
 
   --font-display: var(--font-newsreader), "Iowan Old Style", Georgia, serif;
   --font-sans: var(--font-source-sans), "Segoe UI", system-ui, sans-serif;
@@ -105,7 +105,7 @@
   --color-mark-ring: #c3a872;
   --color-mark-column: #f6f3ec;
   --color-mark-suffix: #c3a872;
-  --ornament-opacity: 0.28;
+  --ornament-opacity: 0.6;
 }
 
 /* 2. Base ------------------------------------------------------------------ */
@@ -234,98 +234,132 @@
     padding-inline: var(--shell-gutter);
   }
 
-  /* Pillar line art on the plain sections, in empty space only, never behind text.
-     Headed sections carry the arch crown top right; the rest are framed by full-height
-     pillars in the page margins, once the margins are wide enough to hold them. */
+  /* Classical plates on the plain sections, drawn in gold and placed only where no text runs.
+     Page intros stand beside an arch, headed sections carry an arch crown or a capital study,
+     and the rest are met by one column in the page margin, alternating sides down the page. */
   .page-intro,
   .journey,
+  .team,
+  .rollout,
   .integrity,
   .plan,
-  .team,
   .additions,
-  .rollout,
   .lenses,
+  .questions,
+  .patron,
+  .founder,
   .summary,
   .institute-teaser,
   .mentorship,
-  .questions,
   .stewards,
-  .patron,
-  .register,
-  .founder {
+  .register {
+    --page-bleed: max(0px, calc((100vw - var(--shell-max)) / 2));
+    --page-inset: calc(var(--page-bleed) + var(--shell-gutter));
     position: relative;
     isolation: isolate;
     overflow: clip;
 
     &::before,
     &::after {
-      @apply pointer-events-none absolute -z-10;
+      @apply pointer-events-none absolute -z-10 bg-no-repeat;
       opacity: var(--ornament-opacity);
-    }
-  }
-
-  .page-intro,
-  .journey,
-  .integrity,
-  .plan,
-  .team,
-  .additions,
-  .rollout {
-    @media (width >= 80rem) {
-      &::before {
-        content: "";
-        @apply top-10;
-        right: max(var(--shell-gutter), calc((100vw - var(--shell-max)) / 2));
-        width: 22rem;
-        height: 17rem;
-        background: url("/images/ornament-arcade.svg") center top / 100% auto no-repeat;
-        mask-image: linear-gradient(180deg, #000 62%, transparent 92%);
-      }
     }
   }
 
   .page-intro {
     @media (width >= 80rem) {
       &::before {
-        @apply bottom-0 top-auto;
-        width: 20rem;
-        height: auto;
-        aspect-ratio: 860 / 1060;
-        background-position: center bottom;
-        mask-image: none;
+        content: "";
+        @apply bottom-0;
+        right: max(1rem, calc(var(--page-bleed) / 2));
+        width: min(27rem, calc(19.5rem + var(--page-bleed)));
+        max-height: calc(100% - 2.5rem);
+        aspect-ratio: 800 / 934;
+        background-image: url("/images/ornament-arch.svg");
+        background-position: right bottom;
+        background-size: contain;
+      }
+    }
+  }
+
+  .journey,
+  .team,
+  .rollout,
+  .integrity,
+  .plan,
+  .additions {
+    @media (width >= 80rem) {
+      &::before {
+        content: "";
+        @apply top-8;
+        right: max(1rem, calc(var(--page-inset) - 3rem));
+        width: 24rem;
+        height: 18rem;
+        background-image: url("/images/ornament-arch.svg");
+        background-position: center top;
+        background-size: 100% auto;
+        mask-image: linear-gradient(180deg, #000 48%, transparent 94%);
+      }
+    }
+  }
+
+  .integrity,
+  .plan,
+  .additions {
+    @media (width >= 80rem) {
+      &::before {
+        background-image: url("/images/ornament-capital.svg");
       }
     }
   }
 
   .lenses,
+  .questions,
+  .patron,
+  .founder,
   .summary,
   .institute-teaser,
   .mentorship,
-  .questions,
   .stewards,
-  .patron,
-  .register,
-  .founder {
-    --pillar-width: 5rem;
-    --pillar-x: calc(((100vw - var(--shell-max)) / 2 + var(--shell-gutter) - var(--pillar-width)) / 2);
+  .register {
+    --column-box: min(13rem, calc(var(--page-inset) - 1.75rem));
+    --column-x: calc((var(--page-inset) - var(--column-box)) / 2);
 
     @media (width >= 86rem) {
       &::before {
         content: "";
-        @apply inset-x-0 bottom-[3.25rem] top-[4.375rem];
-        background:
-          url("/images/ornament-pillar-shaft.svg") left var(--pillar-x) top / var(--pillar-width) auto repeat-y,
-          url("/images/ornament-pillar-shaft.svg") right var(--pillar-x) top / var(--pillar-width) auto repeat-y;
+        @apply bottom-0 top-12;
+        left: var(--column-x);
+        width: var(--column-box);
+        background-image: url("/images/ornament-column.svg");
+        background-position: center bottom;
+        background-size: contain;
       }
+    }
+  }
 
+  .summary,
+  .institute-teaser,
+  .mentorship,
+  .stewards {
+    @media (width >= 86rem) {
+      &::before {
+        left: auto;
+        right: var(--column-x);
+      }
+    }
+  }
+
+  .register {
+    @media (width >= 86rem) {
       &::after {
         content: "";
-        @apply inset-0;
-        background:
-          url("/images/ornament-pillar-capital.svg") left var(--pillar-x) top / var(--pillar-width) auto no-repeat,
-          url("/images/ornament-pillar-capital.svg") right var(--pillar-x) top / var(--pillar-width) auto no-repeat,
-          url("/images/ornament-pillar-base.svg") left var(--pillar-x) bottom / var(--pillar-width) auto no-repeat,
-          url("/images/ornament-pillar-base.svg") right var(--pillar-x) bottom / var(--pillar-width) auto no-repeat;
+        @apply bottom-0 top-12;
+        right: var(--column-x);
+        width: var(--column-box);
+        background-image: url("/images/ornament-column.svg");
+        background-position: center bottom;
+        background-size: contain;
       }
     }
   }
