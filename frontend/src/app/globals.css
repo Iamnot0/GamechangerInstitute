@@ -3420,10 +3420,6 @@
     }
   }
 
-  .post-editor__date {
-    @apply max-w-[16rem];
-  }
-
   .post-editor__actions {
     @apply flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-5;
   }

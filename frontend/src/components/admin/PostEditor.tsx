@@ -328,12 +328,6 @@ export function PostEditor({ kind, post }: PostEditorProps) {
                 <textarea id="post-body" className="form-control" rows={16} required maxLength={10000} value={body} onChange={(event) => setBody(event.target.value)} />
                 <span className="form-field__hint">Leave an empty line between paragraphs.</span>
               </label>
-              <label className="form-field post-editor__date" htmlFor="post-date">
-                <span className="form-field__label">
-                  Event date<span className="form-field__optional">Optional</span>
-                </span>
-                <input id="post-date" className="form-control" type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} />
-              </label>
             </>
           ) : null}
 
@@ -415,6 +409,14 @@ export function PostEditor({ kind, post }: PostEditorProps) {
           <h2 id="editor-publishing" className="editor-card__title">
             Publishing
           </h2>
+          {kind === "article" ? (
+            <label className="form-field" htmlFor="post-date">
+              <span className="form-field__label">
+                Event date<span className="form-field__optional">Optional</span>
+              </span>
+              <input id="post-date" className="form-control" type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} />
+            </label>
+          ) : null}
           <dl className="editor-card__facts">
             <div>
               <dt>Status</dt>
