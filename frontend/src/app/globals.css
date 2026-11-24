@@ -3252,6 +3252,10 @@
 
   .media-card__use {
     @apply text-sm text-muted;
+
+    a {
+      @apply font-semibold text-accent;
+    }
   }
 
   .media-card__actions {

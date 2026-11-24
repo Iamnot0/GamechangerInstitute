@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { ActionNotice, type Notice } from "@/components/admin/ActionNotice";
 import { MediaThumb } from "@/components/admin/MediaThumb";
@@ -39,7 +40,15 @@ export function MediaCard({ media }: { media: Media }) {
           <span className="form-field__label">{isImage ? "Description" : "Title"}</span>
           <textarea id={`media-${media.id}`} className="form-control" rows={isImage ? 3 : 2} maxLength={isImage ? 300 : 120} value={value} onChange={(event) => setValue(event.target.value)} />
         </label>
-        <p className="media-card__use">{inUse ? `Used in: ${media.used_in.join(", ")}` : "Not used yet"}</p>
+        {inUse ? (
+          <p className="media-card__use">On the site in: {media.used_in.join(", ")}</p>
+        ) : (
+          <p className="media-card__use">
+            Not on the site yet. Add it under <Link href="/admin/content/">Content</Link>
+            {isImage ? " or as the cover of a " : " or to a "}
+            <Link href="/admin/posts/">News post</Link>.
+          </p>
+        )}
         <div className="media-card__actions">
           <button type="button" className="text-button" disabled={busy || value.trim() === saved || value.trim() === ""} onClick={save}>
             Save
@@ -54,7 +63,7 @@ export function MediaCard({ media }: { media: Media }) {
               </button>
             </>
           ) : (
-            <button type="button" className="text-button text-button--danger" disabled={busy || inUse} title={inUse ? "Remove it from the site first" : undefined} onClick={() => setConfirming(true)}>
+            <button type="button" className="text-button text-button--danger" disabled={busy || inUse} title={inUse ? "Take it off the site first" : undefined} onClick={() => setConfirming(true)}>
               Delete
             </button>
           )}
