@@ -816,6 +816,25 @@
     @apply grid font-display text-2xl leading-snug text-paper;
   }
 
+  .social-links {
+    @apply flex gap-3;
+  }
+
+  .social-links__item {
+    @apply flex size-11 items-center justify-center rounded-full border border-pine text-sage;
+    transition:
+      color 150ms ease-out,
+      border-color 150ms ease-out;
+  }
+
+  a.social-links__item:hover {
+    @apply border-gold text-paper;
+  }
+
+  .social-links__mark {
+    @apply size-5 fill-current;
+  }
+
   .site-footer__nav {
     @variant md {
       @apply col-span-5;

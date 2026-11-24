@@ -6,6 +6,15 @@ export const site = {
   tagline: ["Build the capacity.", "Change the environment.", "Measure the participation."],
 } as const;
 
+export type SocialNetwork = "LinkedIn" | "Facebook" | "X";
+
+/** The Institute's pages on each network. A null address shows the mark without a link. */
+export const socialProfiles: readonly { network: SocialNetwork; url: string | null }[] = [
+  { network: "LinkedIn", url: null },
+  { network: "Facebook", url: null },
+  { network: "X", url: null },
+];
+
 export const programmeName = "ARISE Leadership Transformation Programme Series";
 
 export type NavItem = { href: string; label: string };

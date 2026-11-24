@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SocialLinks } from "@/components/layout/SocialLinks";
 import { Wordmark } from "@/components/layout/Wordmark";
 import { footerNav, site } from "@/content/site";
 
@@ -15,6 +16,7 @@ export function SiteFooter() {
               <span key={line}>{line}</span>
             ))}
           </p>
+          <SocialLinks />
         </div>
 
         <nav className="site-footer__nav" aria-label="Footer">
