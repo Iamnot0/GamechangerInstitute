@@ -1,12 +1,18 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-const isStaffRoute = createRouteMatcher(["/admin(.*)"]);
+const PROD_COOKIE = "__Host-gci_staff";
+const DEV_COOKIE = "gci_staff";
 
-export default clerkMiddleware(async (auth, request) => {
-  if (isStaffRoute(request)) await auth.protect();
-});
+export default function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    const token = request.cookies.get(PROD_COOKIE)?.value ?? request.cookies.get(DEV_COOKIE)?.value;
+    if (!token) {
+      return NextResponse.redirect(new URL("/sign-in/", request.url));
+    }
+  }
+  return NextResponse.next();
+}
 
-// Clerk runs only on the staff console and its sign-in page; the public site never loads it.
 export const config = {
-  matcher: ["/admin/:path*", "/sign-in/:path*", "/sign-up/:path*"],
+  matcher: ["/admin/:path*", "/sign-in/:path*"],
 };

@@ -97,3 +97,13 @@ export type AdminPost = {
   photos: PostPhoto[];
   document: PostDocument | null;
 };
+
+export type StaffRole = "admin" | "staff";
+
+export type StaffUserItem = {
+  id: string;
+  email: string;
+  role: StaffRole;
+  created_at: string;
+  last_signed_in_at: string | null;
+};

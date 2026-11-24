@@ -1,16 +1,17 @@
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Wordmark } from "@/components/layout/Wordmark";
+import { signOutStaff } from "@/lib/auth-actions";
 
-type AdminHeaderProps = { email: string | null };
+type AdminHeaderProps = { email: string | null; isAdmin: boolean };
 
-const consoleNav = [
-  { href: "/admin/enquiries/", label: "Enquiries" },
-  { href: "/admin/posts/", label: "News" },
-] as const;
+export function AdminHeader({ email, isAdmin }: AdminHeaderProps) {
+  const navItems = [
+    { href: "/admin/enquiries/", label: "Enquiries" },
+    { href: "/admin/posts/", label: "News" },
+    ...(isAdmin ? [{ href: "/admin/staff/", label: "Staff" }] : []),
+  ];
 
-export function AdminHeader({ email }: AdminHeaderProps) {
   return (
     <header className="admin-header">
       <div className="admin-header__inner">
@@ -19,7 +20,7 @@ export function AdminHeader({ email }: AdminHeaderProps) {
           <span className="admin-header__label">Staff console</span>
         </div>
         <nav className="admin-header__nav" aria-label="Staff console">
-          {consoleNav.map((item) => (
+          {navItems.map((item) => (
             <Link key={item.href} href={item.href} className="admin-header__link">
               {item.label}
             </Link>
@@ -28,7 +29,11 @@ export function AdminHeader({ email }: AdminHeaderProps) {
         <div className="admin-header__account">
           {email ? <span className="admin-header__email">{email}</span> : null}
           <ThemeToggle />
-          <UserButton />
+          <form action={signOutStaff}>
+            <button type="submit" className="text-button">
+              Sign out
+            </button>
+          </form>
         </div>
       </div>
     </header>

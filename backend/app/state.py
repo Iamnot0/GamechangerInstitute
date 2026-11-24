@@ -1,8 +1,7 @@
-from typing import NotRequired, TypedDict
+from typing import TypedDict
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from app.auth.verifier import StaffTokenVerifier
 from app.config import Settings
 from app.services.cadence import Cadence
 from app.services.notification_budget import BudgetPolicy
@@ -16,6 +15,6 @@ class AppState(TypedDict):
     engine: AsyncEngine
     session_factory: async_sessionmaker[AsyncSession]
     rate_limit_policy: RateLimitPolicy
+    auth_rate_limit_policy: RateLimitPolicy
     purge_cadence: Cadence
     notification_budget_policy: BudgetPolicy
-    staff_verifier: NotRequired[StaffTokenVerifier]

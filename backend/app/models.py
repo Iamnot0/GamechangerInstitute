@@ -28,6 +28,7 @@ from app.domain import (
     PostDocument,
     PostStatus,
     RoleTransition,
+    StaffRole,
 )
 
 
@@ -210,3 +211,48 @@ class PostPhoto(Base):
     post_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey(Post.id, ondelete="CASCADE"), primary_key=True)
     position: Mapped[int] = mapped_column(Integer, primary_key=True)
     media_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey(MediaAsset.id, ondelete="RESTRICT"), unique=True)
+
+
+class StaffUser(Base):
+    __tablename__ = "staff_users"
+    __table_args__ = (
+        CheckConstraint(column("role", Text).in_(list(StaffRole)), name="role"),
+        CheckConstraint(func.char_length(column("email", Text)).between(3, 254), name="email_length"),
+        CheckConstraint("email = lower(email)", name="email_lowercase"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid7)
+    email: Mapped[str] = mapped_column(Text, unique=True)
+    role: Mapped[str] = mapped_column(Text, server_default=StaffRole.STAFF.value)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_signed_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class StaffLoginCode(Base):
+    """One active 6-digit OTP hash per staff email; issuing a new code overwrites any prior unused code."""
+
+    __tablename__ = "staff_login_codes"
+    __table_args__ = (
+        CheckConstraint(func.char_length(column("email", Text)).between(3, 254), name="email_length"),
+        CheckConstraint(func.char_length(column("code_hash", Text)) == 64, name="code_hash_length"),
+        CheckConstraint(column("attempts", Integer) >= 0, name="attempts_nonnegative"),
+    )
+
+    email: Mapped[str] = mapped_column(Text, primary_key=True)
+    code_hash: Mapped[str] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer, server_default="0")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StaffSession(Base):
+    """Server-backed staff session keyed by SHA-256 of the raw bearer token for immediate revocation."""
+
+    __tablename__ = "staff_sessions"
+    __table_args__ = (CheckConstraint(func.char_length(column("token_hash", Text)) == 64, name="token_hash_length"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid7)
+    token_hash: Mapped[str] = mapped_column(Text, unique=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey(StaffUser.id, ondelete="CASCADE"), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

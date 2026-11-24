@@ -1,25 +1,56 @@
 import "server-only";
-import { auth } from "@clerk/nextjs/server";
+import { cache } from "react";
+import { cookies } from "next/headers";
+import type { StaffRole } from "@/lib/admin-types";
 
-const staffRoles = new Set(
-  (process.env.STAFF_ROLES ?? "org:admin,org:member")
-    .split(",")
-    .map((role) => role.trim())
-    .filter(Boolean),
-);
-const staffOrganizationId = process.env.STAFF_ORGANIZATION_ID?.trim() || null;
+export const STAFF_COOKIE_NAME = process.env.NODE_ENV === "production" ? "__Host-gci_staff" : "gci_staff";
 
-/**
- * UI-side gate only; the API enforces the same rule on every request. Fails closed:
- * without a configured staff organization nobody is treated as staff.
- */
-export async function getStaffSession() {
-  const { userId, sessionClaims } = await auth();
-  const role = sessionClaims?.role;
-  const inStaffOrganization = staffOrganizationId !== null && sessionClaims?.org_id === staffOrganizationId;
-  return {
-    signedIn: userId !== null,
-    isStaff: inStaffOrganization && typeof role === "string" && staffRoles.has(role),
-    email: sessionClaims?.email ?? null,
-  };
+const apiBaseUrl = process.env.BACKEND_INTERNAL_URL ?? process.env.ADMIN_API_URL ?? "http://localhost:8000";
+
+export async function getStaffToken(): Promise<string | null> {
+  const store = await cookies();
+  return store.get("__Host-gci_staff")?.value ?? store.get("gci_staff")?.value ?? null;
 }
+
+export type StaffSession = {
+  signedIn: boolean;
+  isStaff: boolean;
+  isAdmin: boolean;
+  userId: string | null;
+  email: string | null;
+  role: StaffRole | null;
+};
+
+const anonymousSession: StaffSession = {
+  signedIn: false,
+  isStaff: false,
+  isAdmin: false,
+  userId: null,
+  email: null,
+  role: null,
+};
+
+export const getStaffSession = cache(async (): Promise<StaffSession> => {
+  const token = await getStaffToken();
+  if (!token) return anonymousSession;
+
+  try {
+    const response = await fetch(new URL("/v1/auth/session", apiBaseUrl), {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return anonymousSession;
+    const identity = (await response.json()) as { id: string; email: string; role: StaffRole };
+    return {
+      signedIn: true,
+      isStaff: true,
+      isAdmin: identity.role === "admin",
+      userId: identity.id,
+      email: identity.email,
+      role: identity.role,
+    };
+  } catch {
+    return anonymousSession;
+  }
+});

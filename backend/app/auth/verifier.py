@@ -1,87 +1,34 @@
+import hashlib
+import hmac
+import secrets
 from dataclasses import dataclass
-from typing import Final
+from uuid import UUID
 
-import httpx
-import jwt
-
-from app.auth.jwks import JwksCache
-from app.config import AuthConfig
-
-_ALGORITHM: Final = "RS256"
-_REQUIRED_CLAIMS: Final = ["exp", "iat", "nbf", "iss", "sub"]
+from app.domain import StaffRole
 
 
 @dataclass(frozen=True, slots=True)
 class StaffMember:
-    subject: str
-    email: str | None
-    role: str
+    id: UUID
+    email: str
+    role: StaffRole
+
+    @property
+    def subject(self) -> str:
+        return str(self.id)
 
 
-class InvalidTokenError(Exception):
-    def __init__(self, reason: str) -> None:
-        super().__init__(reason)
-        self.reason = reason
+def generate_login_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
-class NotStaffError(Exception):
-    def __init__(self, subject: str, reason: str) -> None:
-        super().__init__(reason)
-        self.subject = subject
-        self.reason = reason
+def hash_login_code(secret: bytes, email: str, code: str) -> str:
+    return hmac.new(secret, f"{email.lower()}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
-class StaffTokenVerifier:
-    """Verifies OIDC session tokens (RS256 JWTs) and admits only members holding a staff role.
-
-    Provider-specific claims are limited to ``org_id``, ``role`` and ``email``, which the identity provider's session
-    token template must add. Membership of the staff organization is always required: anyone able to create their own
-    organization could otherwise grant themselves any organization role.
-    """
-
-    def __init__(self, config: AuthConfig, keys: JwksCache, *, leeway_seconds: float = 10) -> None:
-        self._config = config
-        self._keys = keys
-        self._leeway_seconds = leeway_seconds
-
-    async def verify(self, token: str) -> StaffMember:
-        try:
-            header = jwt.get_unverified_header(token)
-        except jwt.PyJWTError as exc:
-            raise InvalidTokenError("malformed") from exc
-        kid = header.get("kid")
-        if header.get("alg") != _ALGORITHM or not isinstance(kid, str):
-            raise InvalidTokenError("unsupported header")
-
-        key = await self._keys.signing_key(kid)
-        if key is None:
-            raise InvalidTokenError("unknown signing key")
-        try:
-            claims = jwt.decode(
-                token,
-                key,
-                algorithms=[_ALGORITHM],
-                issuer=self._config.issuer,
-                leeway=self._leeway_seconds,
-                options={"require": _REQUIRED_CLAIMS},
-            )
-        except jwt.PyJWTError as exc:
-            raise InvalidTokenError(type(exc).__name__) from exc
-
-        authorized_party = claims.get("azp")
-        if not isinstance(authorized_party, str) or authorized_party not in self._config.authorized_parties:
-            raise InvalidTokenError("unauthorized party")
-        subject = claims["sub"]
-        if not isinstance(subject, str) or not subject:
-            raise InvalidTokenError("missing subject")
-        if claims.get("org_id") != self._config.staff_organization_id:
-            raise NotStaffError(subject, "wrong organization")
-        role = claims.get("role")
-        if not isinstance(role, str) or role not in self._config.staff_roles:
-            raise NotStaffError(subject, "missing staff role")
-        email = claims.get("email")
-        return StaffMember(subject=subject, email=email if isinstance(email, str) and email else None, role=role)
+def generate_session_token() -> str:
+    return secrets.token_urlsafe(32)
 
 
-def create_staff_verifier(config: AuthConfig, http: httpx.AsyncClient) -> StaffTokenVerifier:
-    return StaffTokenVerifier(config, JwksCache(config.jwks_url, http))
+def hash_session_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()

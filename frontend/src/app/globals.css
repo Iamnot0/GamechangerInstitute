@@ -2787,7 +2787,11 @@
   /* 13. Staff console ----------------------------------------------------- */
 
   .staff-sign-in {
-    @apply grid min-h-dvh place-items-center bg-canvas-alt px-5 py-16;
+    @apply relative grid min-h-dvh place-items-center bg-canvas-alt px-5 py-16;
+  }
+
+  .staff-sign-in__bar {
+    @apply absolute top-4 right-5;
   }
 
   .staff-sign-in__inner {
@@ -2799,7 +2803,44 @@
   }
 
   .staff-sign-in__lede {
-    @apply mb-4 text-base text-muted;
+    @apply mb-2 text-base text-muted;
+  }
+
+  .sign-in-form {
+    @apply grid w-full gap-5 border border-line-strong bg-canvas p-6 text-left;
+    border-radius: var(--radius-surface);
+
+    @variant sm {
+      @apply p-8;
+    }
+  }
+
+  .sign-in-form__note {
+    @apply text-sm text-muted;
+  }
+
+  .sign-in-form__code {
+    @apply text-center font-semibold tracking-[0.3em];
+  }
+
+  .sign-in-form__links {
+    @apply flex flex-wrap items-center justify-between gap-4 border-t border-line pt-3 text-sm;
+  }
+
+  .staff-add-form {
+    @apply grid items-end gap-4;
+
+    @variant md {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) auto;
+    }
+  }
+
+  .staff-manager__feedback {
+    @apply mt-4;
+  }
+
+  .staff-manager__confirm {
+    @apply flex flex-wrap items-center gap-4;
   }
 
   .admin-header {

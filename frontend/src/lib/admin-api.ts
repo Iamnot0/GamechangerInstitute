@@ -1,5 +1,4 @@
 import "server-only";
-import { auth } from "@clerk/nextjs/server";
 import type {
   AdminPost,
   EnquiryDetail,
@@ -10,7 +9,10 @@ import type {
   NewPhoto,
   PostFields,
   PostPhoto,
+  StaffRole,
+  StaffUserItem,
 } from "@/lib/admin-types";
+import { getStaffToken } from "@/lib/staff";
 
 // On Vercel the frontend reaches the API privately through the service binding; locally, uvicorn.
 const apiBaseUrl = process.env.BACKEND_INTERNAL_URL ?? process.env.ADMIN_API_URL ?? "http://localhost:8000";
@@ -30,16 +32,15 @@ export class AdminApiError extends Error {
 
 type Problem = { detail?: string; title?: string; errors?: FieldError[] };
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const { getToken } = await auth();
-  const token = await getToken();
-  if (!token) throw new AdminApiError(401, "Your session has ended. Sign in again.");
+async function send<T>(path: string, init: RequestInit = {}, token?: string | null): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   let response: Response;
   try {
     response = await fetch(new URL(path, apiBaseUrl), {
       ...init,
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...init.headers },
+      headers: { ...headers, ...(init.headers as Record<string, string> | undefined) },
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
@@ -52,6 +53,33 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new AdminApiError(response.status, problem.detail ?? problem.title ?? "The request failed.", problem.errors);
   }
   return (response.status === 204 ? undefined : await response.json()) as T;
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = await getStaffToken();
+  if (!token) throw new AdminApiError(401, "Your session has ended. Sign in again.");
+  return send<T>(path, init, token);
+}
+
+const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
+const id = encodeURIComponent;
+
+export type AuthenticatedSession = {
+  token: string;
+  expires_at: string;
+  user: { id: string; email: string; role: StaffRole };
+};
+
+export function requestStaffCode(email: string): Promise<{ sent: boolean }> {
+  return send<{ sent: boolean }>("/v1/auth/request-code", json("POST", { email }));
+}
+
+export function verifyStaffCode(email: string, code: string): Promise<AuthenticatedSession> {
+  return send<AuthenticatedSession>("/v1/auth/verify-code", json("POST", { email, code }));
+}
+
+export async function revokeStaffSession(token: string): Promise<void> {
+  await send<void>("/v1/auth/logout", { method: "POST" }, token).catch(() => undefined);
 }
 
 export function listEnquiries(filters: EnquiryFilters): Promise<EnquiryPage> {
@@ -67,26 +95,20 @@ export function getEnquirySummary(): Promise<EnquirySummary> {
   return request<EnquirySummary>("/v1/admin/enquiries/summary");
 }
 
-export function getEnquiry(id: string): Promise<EnquiryDetail> {
-  return request<EnquiryDetail>(`/v1/admin/enquiries/${encodeURIComponent(id)}`);
+export function getEnquiry(enquiryId: string): Promise<EnquiryDetail> {
+  return request<EnquiryDetail>(`/v1/admin/enquiries/${id(enquiryId)}`);
 }
 
 export function updateEnquiryStatus(
-  id: string,
+  enquiryId: string,
   change: { status: EnquiryStatus; expected_status: EnquiryStatus; note: string | null },
 ): Promise<EnquiryDetail> {
-  return request<EnquiryDetail>(`/v1/admin/enquiries/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    body: JSON.stringify(change),
-  });
+  return request<EnquiryDetail>(`/v1/admin/enquiries/${id(enquiryId)}`, json("PATCH", change));
 }
 
 export function deleteEnquiry(enquiryId: string): Promise<void> {
-  return request<void>(`/v1/admin/enquiries/${encodeURIComponent(enquiryId)}`, { method: "DELETE" });
+  return request<void>(`/v1/admin/enquiries/${id(enquiryId)}`, { method: "DELETE" });
 }
-
-const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
-const id = encodeURIComponent;
 
 export const createPhoto = (photo: NewPhoto) => request<PostPhoto>("/v1/admin/photos", json("POST", photo));
 
@@ -111,3 +133,15 @@ export const setPostPublished = (postId: string, published: boolean, expectedVer
   );
 
 export const deletePost = (postId: string) => request<void>(`/v1/admin/posts/${id(postId)}`, { method: "DELETE" });
+
+export async function listStaffUsers(): Promise<StaffUserItem[]> {
+  return (await request<{ items: StaffUserItem[] }>("/v1/admin/staff")).items;
+}
+
+export function createStaffUser(email: string, role: StaffRole): Promise<StaffUserItem> {
+  return request<StaffUserItem>("/v1/admin/staff", json("POST", { email, role }));
+}
+
+export function deleteStaffUser(userId: string): Promise<void> {
+  return request<void>(`/v1/admin/staff/${id(userId)}`, { method: "DELETE" });
+}

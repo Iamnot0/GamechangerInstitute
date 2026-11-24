@@ -19,8 +19,6 @@ from app.database_url import asyncpg_database_url
 
 _ORIGIN = re.compile(r"https?://[^/\s]+")
 _HEADER_NAME = re.compile(r"[A-Za-z0-9-]+")
-_HTTPS_URL = re.compile(r"https://[^/\s]+(/\S*)?")
-_LOOPBACK_HTTP_URL = re.compile(r"http://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(/\S*)?")
 _HOST_LABEL = r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
 _HOST_OR_SUFFIX = re.compile(rf"\.?{_HOST_LABEL}(?:\.{_HOST_LABEL})+")
 
@@ -40,15 +38,6 @@ class SmtpConfig:
     timeout_seconds: float
     mail_from: str
     notify_to: str
-
-
-@dataclass(frozen=True, slots=True)
-class AuthConfig:
-    issuer: str
-    jwks_url: str
-    authorized_parties: frozenset[str]
-    staff_roles: frozenset[str]
-    staff_organization_id: str
 
 
 class Settings(BaseSettings):
@@ -72,13 +61,11 @@ class Settings(BaseSettings):
     notifications_per_hour: PositiveInt = 200
     mail_from: EmailStr | None = None
     notify_to: EmailStr | None = None
+    auth_mail_from: EmailStr | None = None
+    staff_auth_secret: Annotated[SecretStr, Field(min_length=32)] | None = None
+    site_url: str = "https://gamechanger.institute"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     api_root_path: str = Field(default="", description="Public prefix stripped before routing (/api on Vercel).")
-    auth_issuer: str | None = None
-    auth_jwks_url: str | None = None
-    auth_authorized_parties: Annotated[tuple[str, ...], NoDecode] = ()
-    auth_staff_roles: Annotated[tuple[str, ...], NoDecode] = ("admin", "staff")
-    auth_staff_organization_id: str | None = None
     media_allowed_hosts: Annotated[tuple[str, ...], NoDecode] = Field(
         default=(),
         description=(
@@ -92,21 +79,27 @@ class Settings(BaseSettings):
     def _use_asyncpg_driver(cls, value: object) -> object:
         return asyncpg_database_url(value) if isinstance(value, str) else value
 
-    @field_validator(
-        "cors_origins", "auth_authorized_parties", "auth_staff_roles", "media_allowed_hosts", mode="before"
-    )
+    @field_validator("cors_origins", "media_allowed_hosts", mode="before")
     @classmethod
     def _split_comma_separated(cls, value: object) -> object:
         if isinstance(value, str):
             return tuple(item.strip() for item in value.split(",") if item.strip())
         return value
 
-    @field_validator("cors_origins", "auth_authorized_parties")
+    @field_validator("cors_origins")
     @classmethod
     def _require_exact_origins(cls, origins: tuple[str, ...]) -> tuple[str, ...]:
         if not all(_ORIGIN.fullmatch(origin) for origin in origins):
             raise ValueError("Origins must be scheme://host[:port] without a path")
         return origins
+
+    @field_validator("site_url")
+    @classmethod
+    def _require_site_origin(cls, origin: str) -> str:
+        cleaned = origin.rstrip("/")
+        if not _ORIGIN.fullmatch(cleaned):
+            raise ValueError("SITE_URL must be scheme://host[:port]")
+        return cleaned
 
     @field_validator("api_root_path")
     @classmethod
@@ -114,29 +107,6 @@ class Settings(BaseSettings):
         if root_path and (not root_path.startswith("/") or root_path.endswith("/") or "//" in root_path):
             raise ValueError("API_ROOT_PATH must be empty or a path like /api, without a trailing slash")
         return root_path
-
-    @field_validator("auth_issuer")
-    @classmethod
-    def _require_https_issuer(cls, issuer: str | None) -> str | None:
-        if issuer is not None and (not _HTTPS_URL.fullmatch(issuer) or issuer.endswith("/")):
-            raise ValueError("AUTH_ISSUER must be an https URL without a trailing slash, matching the token's iss")
-        return issuer
-
-    @field_validator("auth_staff_organization_id")
-    @classmethod
-    def _require_exact_organization_id(cls, organization_id: str | None) -> str | None:
-        if organization_id is not None and (not organization_id or organization_id != organization_id.strip()):
-            raise ValueError(
-                "AUTH_STAFF_ORGANIZATION_ID must be a non-blank organization id without surrounding spaces"
-            )
-        return organization_id
-
-    @field_validator("auth_jwks_url")
-    @classmethod
-    def _require_secure_jwks_url(cls, url: str | None) -> str | None:
-        if url is not None and not (_HTTPS_URL.fullmatch(url) or _LOOPBACK_HTTP_URL.fullmatch(url)):
-            raise ValueError("AUTH_JWKS_URL must be an https URL")
-        return url
 
     @field_validator("media_allowed_hosts")
     @classmethod
@@ -161,19 +131,13 @@ class Settings(BaseSettings):
             raise ValueError("SMTP_HOST requires MAIL_FROM and NOTIFY_TO")
         return self
 
-    @model_validator(mode="after")
-    def _require_complete_auth(self) -> Self:
-        if self.auth_issuer and not (
-            self.auth_authorized_parties and self.auth_staff_roles and self.auth_staff_organization_id
-        ):
-            raise ValueError(
-                "AUTH_ISSUER requires AUTH_AUTHORIZED_PARTIES, AUTH_STAFF_ROLES and AUTH_STAFF_ORGANIZATION_ID"
-            )
-        return self
-
     @property
     def is_development(self) -> bool:
         return self.environment is Environment.DEVELOPMENT
+
+    @property
+    def staff_auth_enabled(self) -> bool:
+        return self.staff_auth_secret is not None
 
     @property
     def smtp(self) -> SmtpConfig | None:
@@ -191,13 +155,10 @@ class Settings(BaseSettings):
         )
 
     @property
-    def auth(self) -> AuthConfig | None:
-        if self.auth_issuer is None or self.auth_staff_organization_id is None:
-            return None
-        return AuthConfig(
-            issuer=self.auth_issuer,
-            jwks_url=self.auth_jwks_url or f"{self.auth_issuer}/.well-known/jwks.json",
-            authorized_parties=frozenset(self.auth_authorized_parties),
-            staff_roles=frozenset(self.auth_staff_roles),
-            staff_organization_id=self.auth_staff_organization_id,
-        )
+    def auth_sender(self) -> str | None:
+        if self.auth_mail_from is not None:
+            return str(self.auth_mail_from)
+        if self.mail_from is not None:
+            domain = str(self.mail_from).rpartition("@")[2]
+            return f"noreply@{domain}"
+        return None

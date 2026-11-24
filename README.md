@@ -28,7 +28,7 @@ GameChanger Institute runs an ICF-informed leadership programme: twelve weeks of
 |---|---|
 | **Site** | Home, Programme, For organisations, The Institute, Register interest, Privacy |
 | **Registration** | Individual, corporate and general enquiries, stored in Postgres and emailed to the Institute |
-| **Staff console** | `/admin`: invite-only Clerk sign-in, restricted to the Institute's organization; review enquiries and record status changes with an audit trail |
+| **Staff console** | `/admin`: invite-only 6-digit email sign-in; review and delete enquiries, record status changes with an audit trail, publish news, and manage staff access |
 | **Experience** | Light and dark themes, video hero, smooth scrolling, scroll-driven 3D motion, full reduced-motion support |
 | **Quality bar** | WCAG AA contrast in both themes, keyboard operable, no horizontal overflow from 360 px up |
 
@@ -49,9 +49,9 @@ flowchart LR
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Lenis |
 | Backend | Python 3.14, FastAPI, SQLAlchemy 2 (asyncpg), Alembic, Pydantic 2 |
-| Data | PostgreSQL (Neon): registrations, staff history, rate-limit windows |
+| Data | PostgreSQL (Neon): enquiries, audit history, news posts, staff accounts and sessions, rate-limit windows |
 | Email | SMTP with STARTTLS (Resend) |
-| Staff identity | Clerk: invite-only, organization roles, RS256 session tokens verified by the API |
+| Staff identity | Self-hosted: Postgres staff allowlist, HMAC-hashed 6-digit email codes via Resend, revocable server sessions |
 | Platform | Vercel Services, functions in Singapore (`sin1`) |
 
 ## Repository structure

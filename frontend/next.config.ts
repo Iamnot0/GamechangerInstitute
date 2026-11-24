@@ -4,10 +4,6 @@ const isDev = process.env.NODE_ENV === "development";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 const crossOriginApi = apiUrl && /^https?:\/\//.test(apiUrl) ? ` ${new URL(apiUrl).origin}` : "";
 
-// Clerk runs only on the staff console and its sign-in page, so only those paths allow its origins.
-const clerkOrigins = "https://*.clerk.accounts.dev https://*.clerk.com";
-const clerkChallenge = "https://challenges.cloudflare.com";
-
 // Photos uploaded from the staff console live on this project's own storage host and no other;
 // without MEDIA_HOST no storage host is trusted. The stills of linked YouTube videos come from ytimg.
 const mediaHost = process.env.MEDIA_HOST?.trim() || null;
@@ -47,14 +43,10 @@ const baseHeaders = [
 ];
 
 const siteCsp = contentSecurityPolicy({ img: ` ${mediaOrigins}`, frame: "https://www.youtube-nocookie.com" });
+// vercel.com receives photo and PDF uploads straight from the browser on the staff console.
 const staffCsp = contentSecurityPolicy({
-  script: ` ${clerkOrigins} ${clerkChallenge}`,
-  // Clerk's bot protection probes *.client.protect.clerk.com on non-default ports (8443, 18443).
-  // vercel.com receives photo uploads straight from the browser.
-  connect: ` ${clerkOrigins} https://*.clerk.com:* https://vercel.com`,
-  img: ` https://img.clerk.com ${mediaOrigins}`,
-  frame: clerkChallenge,
-  worker: " blob:",
+  connect: " https://vercel.com",
+  img: ` ${mediaOrigins}`,
 });
 
 const nextConfig: NextConfig = {
@@ -70,7 +62,7 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     // Later entries override earlier ones for the same header key, so staff paths replace the site CSP.
-    const staffPaths = ["/admin/:path*", "/sign-in/:path*", "/sign-up/:path*"];
+    const staffPaths = ["/admin/:path*", "/sign-in/:path*"];
     return [
       { source: "/:path*", headers: [...baseHeaders, { key: "Content-Security-Policy", value: siteCsp }] },
       ...staffPaths.map((source) => ({

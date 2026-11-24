@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { AdminApiError, deleteEnquiry, updateEnquiryStatus } from "@/lib/admin-api";
-import { enquiryStatuses, type EnquiryStatus } from "@/lib/admin-types";
+import { AdminApiError, createStaffUser, deleteEnquiry, deleteStaffUser, updateEnquiryStatus } from "@/lib/admin-api";
+import { enquiryStatuses, type EnquiryStatus, type StaffRole } from "@/lib/admin-types";
 import { getStaffSession } from "@/lib/staff";
 
 export type StatusFormState =
@@ -52,4 +52,38 @@ export async function removeEnquiry(id: string): Promise<{ ok: false; message: s
 
   revalidatePath("/admin/enquiries/");
   redirect("/admin/enquiries/");
+}
+
+export async function addStaffMember(rawEmail: string, role: StaffRole): Promise<{ ok: true } | { ok: false; message: string }> {
+  const email = rawEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, message: "Enter a valid email address." };
+  }
+  if (role !== "admin" && role !== "staff") {
+    return { ok: false, message: "Choose a valid role." };
+  }
+
+  try {
+    if (!(await getStaffSession()).isAdmin) throw new AdminApiError(403, "Only an administrator can manage staff accounts.");
+    await createStaffUser(email, role);
+  } catch (error) {
+    if (error instanceof AdminApiError) return { ok: false, message: error.message };
+    throw error;
+  }
+
+  revalidatePath("/admin/staff/");
+  return { ok: true };
+}
+
+export async function removeStaffMember(userId: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    if (!(await getStaffSession()).isAdmin) throw new AdminApiError(403, "Only an administrator can manage staff accounts.");
+    await deleteStaffUser(userId);
+  } catch (error) {
+    if (error instanceof AdminApiError) return { ok: false, message: error.message };
+    throw error;
+  }
+
+  revalidatePath("/admin/staff/");
+  return { ok: true };
 }

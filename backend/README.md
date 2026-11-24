@@ -11,6 +11,11 @@ Accepts enquiries from the website, stores them in PostgreSQL and emails each ne
 | `GET /v1/admin/enquiries/summary` | Staff: totals by status and by kind |
 | `GET /v1/admin/enquiries/{id}` | Staff: every field plus status events, newest first |
 | `PATCH /v1/admin/enquiries/{id}` | Staff: `{"status", "expected_status", "note"?}`. `409` when the enquiry is no longer in `expected_status`; `422` when the status would not change |
+| `DELETE /v1/admin/enquiries/{id}` | Staff: permanently delete an enquiry and its status events |
+| `POST /v1/auth/request-code` | Staff sign-in: send a 10-minute 6-digit code if the email is on the staff list (`202 {"sent": true}`) |
+| `POST /v1/auth/verify-code` | Staff sign-in: exchange email + 6-digit code for a 14-day bearer session token |
+| `GET /v1/auth/session`, `POST /v1/auth/logout` | Staff session check and revocation |
+| `GET`, `POST`, `DELETE /v1/admin/staff` | Admin: list, invite, or revoke staff access (immediate session cascade) |
 | `GET /v1/posts` | Published posts with their photos, YouTube id and PDF, newest event date first (publication day when a post has none). `limit` (1-50, default 50) |
 | `GET /v1/posts/{slug}` | One published post, or `404` |
 | `POST /v1/admin/photos` | Staff: record a photo the console uploaded to storage: `{"url", "content_type", "size_bytes", "width", "height", "alt"}`. `201 {"id", "src", "width", "height", "alt"}`; `422` when the URL is not a canonical https address on an allowed host or is already recorded |
@@ -20,7 +25,7 @@ Accepts enquiries from the website, stores them in PostgreSQL and emails each ne
 | `GET`, `PUT`, `DELETE /v1/admin/posts/{id}` | Staff: read, replace (the same fields plus `expected_version`; `409` when stale; `422` when the slug of a post that was ever published would change) or delete |
 | `POST /v1/admin/posts/{id}/publish`, `/unpublish` | Staff: `{"expected_version"}`. `409` when stale or already in that state |
 
-The admin endpoints exist only when `AUTH_ISSUER` is set; otherwise they return `404`.
+The admin and auth endpoints exist only when `STAFF_AUTH_SECRET` is set; otherwise they return `404`.
 
 Every response is sent with `Cache-Control: no-store`, except successful public post responses, which carry `public, max-age=0, s-maxage=60, stale-while-revalidate=600` so the edge can serve them. Request bodies are limited to 16 KiB, and to 64 KiB on `/v1/admin/posts`, where a body of 10,000 characters must fit in any script.
 
@@ -80,34 +85,19 @@ Migrations connect with `DATABASE_URL_UNPOOLED` when it is set, otherwise `DATAB
 | `API_ROOT_PATH` | empty | Public prefix stripped before routing. `/api` on Vercel, where `/api/*` routes to this service; internal calls without the prefix still match |
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
 | `FORWARDED_ALLOW_IPS` | `127.0.0.1` in the image | Read by uvicorn: proxies trusted to set `X-Forwarded-For` |
-| `AUTH_ISSUER` | unset | OIDC issuer of staff session tokens, exactly as in their `iss` claim (`https://<instance>.clerk.accounts.dev`). Unset disables the admin API. |
-| `AUTH_JWKS_URL` | `{AUTH_ISSUER}/.well-known/jwks.json` | Where the issuer publishes its signing keys. Must be https. |
-| `AUTH_AUTHORIZED_PARTIES` | required with `AUTH_ISSUER` | Comma-separated exact origins accepted in the token's `azp` claim, normally the staff console's origin |
-| `AUTH_STAFF_ROLES` | `admin,staff` | Values of the token's `role` claim that grant access |
-| `AUTH_STAFF_ORGANIZATION_ID` | required with `AUTH_ISSUER` | The staff organization's id (`org_...`). Only tokens whose `org_id` claim equals it are staff. |
+| `STAFF_AUTH_SECRET` | unset | Secret, at least 32 characters. Keys HMAC-SHA256 hashes of 6-digit staff login codes and enables `/v1/auth/*` and `/v1/admin/*`. Unset disables the admin API. |
+| `AUTH_MAIL_FROM` | `noreply@<MAIL_FROM domain>` | Sender address for staff sign-in codes and invitation emails |
+| `SITE_URL` | `https://gamechanger.institute` | Base URL included in staff invitation emails |
 | `MEDIA_ALLOWED_HOSTS` | empty | The exact storage host recorded photo and PDF URLs may use, always over https: this project's Blob store, such as `abc123.public.blob.vercel-storage.com`. Empty refuses every photo and PDF. Avoid a leading-dot suffix on a shared storage domain: it would trust every other tenant's files. |
 
 ## Staff authentication
 
-The admin API accepts `Authorization: Bearer <session JWT>` from any OIDC provider that signs with RS256 and publishes a JWKS. With Clerk, add these claims to the session token template (Configure → Sessions → Customize session token):
+Staff authentication is self-hosted in PostgreSQL (`staff_users`, `staff_login_codes`, `staff_sessions`) with one-time 6-digit codes sent over SMTP (`AUTH_MAIL_FROM`, defaulting to `noreply@<MAIL_FROM domain>`):
 
-```json
-{
-  "email": "{{user.primary_email_address}}",
-  "role": "{{org.role}}",
-  "org_id": "{{org.id}}"
-}
-```
-
-Staff are members of the Institute's Clerk organization, and the console must make it the session's active organization. Because any user of the Clerk app can create an organization and be its `org:admin`, the role alone proves nothing, so the organization check is mandatory: the app refuses to start with `AUTH_ISSUER` but without `AUTH_STAFF_ORGANIZATION_ID`. A token is accepted when:
-
-- its signature verifies against a key from the issuer's JWKS (RS256 only),
-- `iss` equals `AUTH_ISSUER`, `azp` is one of `AUTH_AUTHORIZED_PARTIES`, and `sub` is present,
-- `exp`, `nbf` and `iat` hold within a 10-second leeway,
-- `org_id` equals `AUTH_STAFF_ORGANIZATION_ID`,
-- `role` is one of `AUTH_STAFF_ROLES`. A missing role grants nothing.
-
-Missing, malformed, expired or foreign tokens get `401` with `WWW-Authenticate: Bearer`; valid tokens from another organization or without a staff role get `403`, logged with the reason; if the signing keys have never loaded, `503`. Keys are cached in memory, reloaded hourly or when a token names an unknown key (at most once a minute), and fetched with a 5-second timeout, so requests never wait on the provider once keys are held. Tokens are never logged; staff actions are logged with the actor's `sub`.
+- Only emails present in `staff_users` receive a sign-in code; `POST /v1/auth/request-code` always returns `202 {"sent": true}` so callers cannot enumerate staff emails.
+- Login codes are stored as `HMAC-SHA256(STAFF_AUTH_SECRET, "{email}:{code}")`, expire in 10 minutes, allow at most 5 failed attempts, and are deleted on use.
+- Verified sign-ins create a 14-day `staff_sessions` row storing only `SHA-256(token)`. The Next.js console holds the raw token in an `HttpOnly; Secure; SameSite=Lax` cookie (`__Host-gci_staff` in production) and forwards it server-to-server as `Authorization: Bearer <token>`.
+- Deleting a `staff_users` row cascades its `staff_sessions` rows, revoking access immediately. Administrators cannot delete their own account.
 
 The console calls the admin API server to server. CORS does not allow the `Authorization` header or the `PATCH`, `PUT` and `DELETE` methods, so browsers cannot call it directly.
 
@@ -118,7 +108,7 @@ The console calls the admin API server to server. CORS does not allow the `Autho
 - Service root `backend/`, entrypoint `app.asgi:app`. Python 3.14 comes from `.python-version` and `requires-python`; dependencies install from `pyproject.toml` and `uv.lock`.
 - The service must see the paths it serves (`/v1/...`, `/healthz`, `/readyz`), so strip any public prefix with a `request.path` transform in the service's routes.
 - Set `ENVIRONMENT=production`, `TRUSTED_CLIENT_IP_HEADER=x-real-ip`, `DATABASE_POOL_SIZE=0`, `RATE_LIMIT_HASH_KEY` and the SMTP variables. The Neon integration provides `DATABASE_URL` and `DATABASE_URL_UNPOOLED`.
-- For the staff console, set `AUTH_ISSUER` to the Clerk instance URL, `AUTH_AUTHORIZED_PARTIES` to the production origin, `AUTH_STAFF_ROLES=org:admin,org:member` and `AUTH_STAFF_ORGANIZATION_ID` to the Institute's Clerk organization id (`org_...`).
+- For the staff console, set `STAFF_AUTH_SECRET` (32+ chars) and `AUTH_MAIL_FROM=noreply@gamechanger.institute`.
 - Run `alembic upgrade head` against `DATABASE_URL_UNPOOLED` before promoting a deployment that changes the schema.
 - The notification email is sent before the `202` is returned, because the runtime may suspend the instance after the response.
 

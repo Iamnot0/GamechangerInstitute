@@ -1,4 +1,4 @@
-import { SignOutButton } from "@clerk/nextjs";
+import { signOutStaff } from "@/lib/auth-actions";
 
 export function AccessDenied() {
   return (
@@ -7,14 +7,14 @@ export function AccessDenied() {
         This account does not have staff access
       </h1>
       <p className="admin-state__body">
-        You are signed in, but your account has not been given a staff role. Ask the programme director to grant
-        access, then sign in again.
+        You are signed in, but your account has not been granted a staff role. Ask an administrator to grant access,
+        then sign in again.
       </p>
-      <SignOutButton redirectUrl="/sign-in/">
-        <button type="button" className="button button--secondary">
+      <form action={signOutStaff}>
+        <button type="submit" className="button button--secondary">
           Sign out
         </button>
-      </SignOutButton>
+      </form>
     </section>
   );
 }

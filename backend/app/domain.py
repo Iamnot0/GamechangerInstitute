@@ -40,6 +40,11 @@ class PostStatus(StrEnum):
     PUBLISHED = "published"
 
 
+class StaffRole(StrEnum):
+    ADMIN = "admin"
+    STAFF = "staff"
+
+
 @dataclass(frozen=True, slots=True)
 class PostDocument:
     """The one PDF a post may offer for download: where it is stored, the name readers see, and its size."""
