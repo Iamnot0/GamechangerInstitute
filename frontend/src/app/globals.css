@@ -18,7 +18,8 @@
    11. Register and forms
    12. Legal and not found
    13. Staff console
-   14. Motion
+   14. News and events
+   15. Motion
 */
 
 @import "tailwindcss" source(none);
@@ -3086,9 +3087,460 @@
   .event-timeline__note {
     @apply text-base;
   }
+
+  .admin-header__nav {
+    @apply flex flex-wrap gap-x-7;
+  }
+
+  .admin-page__header--split {
+    @apply flex flex-wrap items-end justify-between gap-4;
+  }
+
+  .admin-page__back {
+    @apply text-sm font-semibold text-accent no-underline;
+
+    &::before {
+      content: "\2039\00a0";
+    }
+  }
+
+  .admin-empty,
+  .admin-note {
+    @apply max-w-[70ch] text-muted;
+  }
+
+  .admin-note {
+    @apply text-sm;
+  }
+
+  .admin .button:disabled {
+    @apply cursor-not-allowed;
+  }
+
+  .status-badge--live {
+    @apply bg-canvas-tint text-fg;
+    box-shadow: inset 0 0 0 1px var(--color-line-strong);
+  }
+
+  .status-badge--draft {
+    @apply bg-canvas-alt text-fg;
+    box-shadow: inset 0 0 0 1px var(--color-accent-warm);
+  }
+
+  .text-button {
+    @apply inline-flex min-h-11 items-center border-0 bg-transparent p-0 font-semibold text-accent underline;
+
+    &:disabled {
+      @apply cursor-not-allowed text-muted no-underline;
+    }
+  }
+
+  .text-button--danger {
+    @apply text-accent-warm;
+  }
+
+  .action-notice {
+    @apply grid gap-1 border-l-4 px-4 py-3 text-base;
+
+    ul {
+      @apply list-disc pl-5 text-sm;
+    }
+  }
+
+  .action-notice--ok {
+    @apply border-accent bg-canvas-tint;
+  }
+
+  .action-notice--error {
+    @apply border-accent-warm bg-canvas-alt font-semibold;
+  }
+
+  .media-add {
+    @apply grid gap-8;
+
+    @variant lg {
+      @apply grid-cols-2;
+    }
+  }
+
+  .uploader,
+  .video-form {
+    @apply grid content-start gap-4 border border-line-strong p-6;
+    border-radius: var(--radius-surface);
+  }
+
+  .uploader__drop {
+    @apply grid cursor-pointer justify-items-center gap-1 border-2 border-dashed border-line-strong px-6 py-10 text-center;
+    border-radius: var(--radius-surface);
+
+    strong {
+      @apply font-display text-xl font-normal;
+    }
+
+    span {
+      @apply text-sm text-muted;
+    }
+
+    &:hover {
+      @apply border-strong bg-canvas-tint;
+    }
+
+    &:has(:focus-visible) {
+      outline: 3px solid var(--color-terracotta);
+      outline-offset: 3px;
+    }
+  }
+
+  .uploader__input {
+    @apply sr-only;
+  }
+
+  .uploader__queue {
+    @apply grid gap-4;
+  }
+
+  .uploader__item {
+    @apply grid gap-4 border-t border-line pt-4;
+
+    @variant sm {
+      grid-template-columns: 10rem 1fr auto;
+      align-items: start;
+    }
+  }
+
+  .uploader__preview {
+    @apply aspect-[4/3] w-40 object-cover;
+    border-radius: var(--radius-control);
+  }
+
+  .video-form__fields {
+    @apply grid gap-4;
+  }
+
+  .media-library {
+    @apply grid gap-6;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  }
+
+  .media-card {
+    @apply grid content-start border border-line-strong bg-canvas;
+    border-radius: var(--radius-surface);
+    overflow: clip;
+  }
+
+  .media-card__frame {
+    @apply relative bg-canvas-alt;
+  }
+
+  .media-card__thumb {
+    @apply aspect-[4/3] w-full object-cover;
+  }
+
+  .media-card__kind {
+    @apply absolute left-2 top-2 bg-forest-deep px-2 py-0.5 text-sm font-semibold text-paper;
+    border-radius: var(--radius-control);
+  }
+
+  .media-card__body {
+    @apply grid gap-2 p-4;
+  }
+
+  .media-card__use {
+    @apply text-sm text-muted;
+  }
+
+  .media-card__actions {
+    @apply flex flex-wrap gap-x-5;
+  }
+
+  .media-picker {
+    @apply grid gap-2;
+  }
+
+  .media-picker__current {
+    @apply flex flex-wrap items-center gap-4;
+  }
+
+  .media-picker__thumb {
+    @apply aspect-[4/3] w-32 object-cover;
+    border-radius: var(--radius-control);
+  }
+
+  .media-picker__empty {
+    @apply grid aspect-[4/3] w-32 place-items-center border border-dashed border-line-strong text-sm text-muted;
+    border-radius: var(--radius-control);
+  }
+
+  .media-picker__actions {
+    @apply flex flex-wrap items-center gap-4;
+  }
+
+  .media-dialog {
+    @apply m-auto w-[min(60rem,calc(100vw-2rem))] border border-line-strong bg-canvas p-6 text-fg;
+    max-height: calc(100dvh - 2rem);
+    border-radius: var(--radius-surface);
+
+    &::backdrop {
+      background: rgb(16 48 42 / 0.6);
+    }
+  }
+
+  .media-dialog__head {
+    @apply mb-4 flex items-center justify-between gap-4;
+
+    h2 {
+      @apply text-2xl;
+    }
+  }
+
+  .media-dialog__empty {
+    @apply text-muted;
+  }
+
+  .media-dialog__grid {
+    @apply grid gap-4;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  }
+
+  .media-dialog__option {
+    @apply grid w-full gap-2 border border-line bg-canvas p-2 text-left text-sm text-fg;
+    border-radius: var(--radius-control);
+
+    &:hover,
+    &[aria-pressed="true"] {
+      @apply border-strong bg-canvas-tint;
+    }
+
+    &[aria-pressed="true"] {
+      box-shadow: inset 0 0 0 1px var(--color-strong);
+    }
+
+    span {
+      @apply line-clamp-2;
+    }
+  }
+
+  .media-dialog__thumb {
+    @apply aspect-[4/3] w-full object-cover;
+  }
+
+  .block-editor,
+  .post-editor {
+    @apply grid gap-6;
+  }
+
+  .block-editor__bar {
+    @apply sticky z-30 flex flex-wrap items-center justify-between gap-4 border-y border-line bg-canvas py-3;
+    top: 4.25rem;
+  }
+
+  .block-editor__actions {
+    @apply flex flex-wrap items-center gap-4;
+  }
+
+  .block-editor__body {
+    @apply grid gap-10;
+
+    @variant xl {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  .block-editor__form,
+  .post-editor__fields {
+    @apply grid gap-6;
+  }
+
+  .post-editor__fields {
+    @apply max-w-[46rem];
+  }
+
+  .post-editor__pair {
+    @apply grid gap-6;
+
+    @variant sm {
+      @apply grid-cols-2;
+    }
+  }
+
+  .field-list {
+    @apply grid gap-4 border-0 p-0;
+  }
+
+  .field-list__legend {
+    @apply mb-2 font-display text-2xl;
+  }
+
+  .field-list__items {
+    @apply grid gap-4;
+  }
+
+  .field-list__item {
+    @apply grid gap-3 border border-line-strong p-4;
+    border-radius: var(--radius-surface);
+  }
+
+  .field-list__fields {
+    @apply grid gap-4;
+  }
+
+  .field-list__tools {
+    @apply flex flex-wrap gap-x-5 border-t border-line pt-1;
+  }
+
+  .block-preview {
+    @apply grid gap-3;
+
+    @variant xl {
+      @apply sticky;
+      top: 9rem;
+    }
+  }
+
+  .block-preview__title {
+    @apply text-2xl;
+  }
+
+  .block-preview__frame {
+    @apply border border-line-strong bg-canvas;
+    border-radius: var(--radius-surface);
+    overflow: clip;
+  }
+
+  /* The real section, laid out at desktop width and scaled to fit the panel. */
+  .block-preview__stage {
+    width: 80rem;
+    zoom: 0.44;
+
+    section {
+      animation: none;
+    }
+  }
+
+  .block-preview__empty {
+    @apply border border-dashed border-line-strong p-6 text-muted;
+    border-radius: var(--radius-surface);
+  }
+
+  /* 14. News and events ---------------------------------------------------- */
+
+  .news {
+    @apply py-16;
+
+    @variant md {
+      @apply py-24;
+    }
+  }
+
+  .news__empty {
+    @apply max-w-[52ch] text-lede text-muted;
+  }
+
+  .news__list {
+    @apply grid gap-x-8 gap-y-14;
+
+    @variant md {
+      @apply grid-cols-2;
+    }
+
+    @variant lg {
+      @apply grid-cols-3;
+    }
+  }
+
+  .news__item {
+    @apply grid content-start gap-2;
+  }
+
+  .news__cover {
+    @apply mb-3 aspect-[3/2] w-full object-cover;
+    border-radius: var(--radius-control);
+  }
+
+  .news__date,
+  .post__date {
+    @apply text-sm font-semibold text-accent;
+  }
+
+  .news__title {
+    @apply text-2xl;
+
+    a {
+      @apply text-fg no-underline;
+    }
+
+    a:hover {
+      @apply text-accent underline;
+    }
+  }
+
+  .news__summary {
+    @apply text-muted;
+  }
+
+  .post {
+    @apply py-16;
+
+    @variant md {
+      @apply py-24;
+    }
+  }
+
+  .post__inner {
+    @apply grid max-w-[46rem] gap-4;
+  }
+
+  .post__back {
+    @apply text-sm font-semibold text-accent no-underline;
+
+    &::before {
+      content: "\2039\00a0";
+    }
+  }
+
+  .post__title {
+    @apply text-headline;
+  }
+
+  .post__summary {
+    @apply text-lede text-muted;
+  }
+
+  .post__cover {
+    @apply my-4 w-full;
+    border-radius: var(--radius-control);
+  }
+
+  .post__body {
+    @apply grid gap-5 text-lg;
+  }
+
+  .video-embed {
+    @apply relative mt-4 block aspect-video w-full border-0 bg-forest-deep p-0;
+    border-radius: var(--radius-control);
+    overflow: clip;
+  }
+
+  .video-embed__frame {
+    @apply absolute inset-0 size-full border-0;
+  }
+
+  .video-embed__still {
+    @apply absolute inset-0 size-full object-cover opacity-80;
+  }
+
+  .video-embed__play {
+    @apply absolute bottom-4 left-4 bg-paper px-4 py-2 text-left font-semibold text-forest;
+    border-radius: var(--radius-control);
+  }
+
+  .video-embed--still:hover .video-embed__still {
+    @apply opacity-100;
+  }
 }
 
-/* 14. Motion ---------------------------------------------------------------
+/* 15. Motion ---------------------------------------------------------------
    Theme switch: a circular reveal from the toggle (View Transitions, driven by
    ThemeToggle). Hero: words rise in on load, then the hero recedes in depth as
    it scrolls away. Sections enter in 3D, scrubbed to scroll. Signature: the

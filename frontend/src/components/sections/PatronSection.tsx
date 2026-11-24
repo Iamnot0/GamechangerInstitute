@@ -1,7 +1,7 @@
 import { Photo } from "@/components/ui/Photo";
-import { patron } from "@/content/institute";
+import type { SiteContent } from "@/lib/site-content";
 
-export function PatronSection() {
+export function PatronSection({ patron }: { patron: SiteContent["patron"] }) {
   return (
     <section className="patron" aria-label="Patron">
       <figure className="patron__inner">

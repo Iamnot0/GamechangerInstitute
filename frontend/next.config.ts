@@ -8,6 +8,9 @@ const crossOriginApi = apiUrl && /^https?:\/\//.test(apiUrl) ? ` ${new URL(apiUr
 const clerkOrigins = "https://*.clerk.accounts.dev https://*.clerk.com";
 const clerkChallenge = "https://challenges.cloudflare.com";
 
+// Photos uploaded from the staff console, and the stills of linked YouTube videos.
+const mediaOrigins = "https://*.public.blob.vercel-storage.com https://i.ytimg.com";
+
 type Csp = { script?: string; connect?: string; img?: string; frame?: string; worker?: string };
 
 // Pages are prerendered and cannot carry per-request nonces, so inline scripts are allowed
@@ -38,12 +41,13 @@ const baseHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
 ];
 
-const siteCsp = contentSecurityPolicy();
+const siteCsp = contentSecurityPolicy({ img: ` ${mediaOrigins}`, frame: "https://www.youtube-nocookie.com" });
 const staffCsp = contentSecurityPolicy({
   script: ` ${clerkOrigins} ${clerkChallenge}`,
   // Clerk's bot protection probes *.client.protect.clerk.com on non-default ports (8443, 18443).
-  connect: ` ${clerkOrigins} https://*.clerk.com:*`,
-  img: " https://img.clerk.com",
+  // vercel.com receives photo uploads straight from the browser.
+  connect: ` ${clerkOrigins} https://*.clerk.com:* https://vercel.com`,
+  img: ` https://img.clerk.com ${mediaOrigins}`,
   frame: clerkChallenge,
   worker: " blob:",
 });
@@ -52,7 +56,13 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   agentRules: false,
   poweredByHeader: false,
-  images: { unoptimized: true },
+  images: {
+    unoptimized: true,
+    remotePatterns: [
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      { protocol: "https", hostname: "i.ytimg.com" },
+    ],
+  },
   async headers() {
     // Later entries override earlier ones for the same header key, so staff paths replace the site CSP.
     const staffPaths = ["/admin/:path*", "/sign-in/:path*", "/sign-up/:path*"];

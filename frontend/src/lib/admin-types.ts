@@ -65,3 +65,65 @@ export type EnquiryFilters = {
   q?: string;
   cursor?: string;
 };
+
+
+export type MediaKind = "image" | "video";
+
+export type Media = {
+  id: string;
+  kind: MediaKind;
+  url: string;
+  content_type: string | null;
+  size_bytes: number | null;
+  width: number | null;
+  height: number | null;
+  alt: string;
+  title: string;
+  youtube_id: string | null;
+  created_at: string;
+  created_by_email: string | null;
+  used_in: string[];
+};
+
+export type NewImage = {
+  url: string;
+  content_type: string;
+  size_bytes: number;
+  width: number;
+  height: number;
+  alt: string;
+};
+
+export type BlockSummary = {
+  key: string;
+  version: number;
+  has_draft: boolean;
+  draft_updated_at: string | null;
+  draft_updated_by_email: string | null;
+  published_at: string | null;
+  published_by_email: string | null;
+};
+
+export type BlockData = Record<string, unknown>;
+
+export type BlockDetail = Omit<BlockSummary, "has_draft"> & { draft: BlockData | null; published: BlockData | null };
+
+export type PostFields = {
+  title: string;
+  summary: string;
+  body: string;
+  slug?: string;
+  event_date: string | null;
+  cover_media_id: string | null;
+  video_media_id: string | null;
+};
+
+export type AdminPost = Required<PostFields> & {
+  id: string;
+  status: "draft" | "published";
+  published_at: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+  updated_by_email: string | null;
+};

@@ -9,6 +9,7 @@ import { PageIntro } from "@/components/ui/PageIntro";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { pageMetadata } from "@/lib/metadata";
 import { breadcrumb } from "@/lib/structured-data";
+import { getSiteContent } from "@/lib/site-content";
 
 export const metadata = pageMetadata({
   title: "For organisations",
@@ -17,7 +18,8 @@ export const metadata = pageMetadata({
   path: "/organisations/",
 });
 
-export default function OrganisationsPage() {
+export default async function OrganisationsPage() {
+  const content = await getSiteContent();
   return (
     <>
       <PageIntro
@@ -28,7 +30,7 @@ export default function OrganisationsPage() {
       <TracksSection />
       <CorporateAdditionsSection />
       <CorporatePlanSection />
-      <SuccessStoriesSection />
+      <SuccessStoriesSection stories={content.success_stories} logos={content.client_logos} />
       <ConfidentialitySection />
       <RolloutSection />
       <ClosingCta

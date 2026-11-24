@@ -5,6 +5,13 @@ import { Wordmark } from "@/components/layout/Wordmark";
 
 type AdminHeaderProps = { email: string | null };
 
+const consoleNav = [
+  { href: "/admin/enquiries/", label: "Enquiries" },
+  { href: "/admin/media/", label: "Media" },
+  { href: "/admin/content/", label: "Content" },
+  { href: "/admin/posts/", label: "News" },
+] as const;
+
 export function AdminHeader({ email }: AdminHeaderProps) {
   return (
     <header className="admin-header">
@@ -14,9 +21,11 @@ export function AdminHeader({ email }: AdminHeaderProps) {
           <span className="admin-header__label">Staff console</span>
         </div>
         <nav className="admin-header__nav" aria-label="Staff console">
-          <Link href="/admin/enquiries/" className="admin-header__link">
-            Enquiries
-          </Link>
+          {consoleNav.map((item) => (
+            <Link key={item.href} href={item.href} className="admin-header__link">
+              {item.label}
+            </Link>
+          ))}
         </nav>
         <div className="admin-header__account">
           {email ? <span className="admin-header__email">{email}</span> : null}

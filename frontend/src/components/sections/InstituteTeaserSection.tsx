@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Photo } from "@/components/ui/Photo";
-import { founder, platforms, stewards } from "@/content/institute";
+import type { SiteContent } from "@/lib/site-content";
 
-export function InstituteTeaserSection() {
+type InstituteTeaserSectionProps = Pick<SiteContent, "founder" | "stewards" | "platforms">;
+
+export function InstituteTeaserSection({ founder, stewards, platforms }: InstituteTeaserSectionProps) {
   return (
     <section className="institute-teaser" aria-labelledby="institute-teaser-title">
       <div className="institute-teaser__inner">
@@ -10,7 +12,7 @@ export function InstituteTeaserSection() {
           <Photo photo={founder.portrait} className="institute-teaser__photo" />
           <figcaption className="institute-teaser__caption">
             <strong>
-              {founder.name} ({founder.shortName})
+              {founder.name} ({founder.short_name})
             </strong>
             {founder.title}
           </figcaption>
@@ -23,7 +25,7 @@ export function InstituteTeaserSection() {
           <p className="institute-teaser__body">{stewards.body}</p>
           <p className="institute-teaser__body">The Institute also convenes leaders through:</p>
           <ul className="institute-teaser__platforms">
-            {platforms.map((platform) => (
+            {platforms.items.map((platform) => (
               <li key={platform.name}>{platform.name}</li>
             ))}
           </ul>

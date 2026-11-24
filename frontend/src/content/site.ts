@@ -14,6 +14,7 @@ export const primaryNav: readonly NavItem[] = [
   { href: "/programme/", label: "Programme" },
   { href: "/organisations/", label: "For organisations" },
   { href: "/institute/", label: "The Institute" },
+  { href: "/news/", label: "News" },
 ];
 
 export const registerLink: NavItem = { href: "/register/", label: "Register interest" };
