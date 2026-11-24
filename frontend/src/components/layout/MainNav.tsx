@@ -39,7 +39,7 @@ export function MainNav() {
         onClick={() => setOpen((value) => !value)}
       >
         <span className="main-nav__toggle-bars" aria-hidden="true" />
-        {open ? "Close" : "Menu"}
+        <span className="main-nav__toggle-label">{open ? "Close" : "Menu"}</span>
       </button>
 
       <div id={panelId} className="main-nav__panel" data-open={open}>

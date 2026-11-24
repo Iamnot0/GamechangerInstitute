@@ -37,6 +37,8 @@
   --color-paper-deep: #ece6da;
   --color-terracotta: #c8553b;
   --color-terracotta-soft: #e69a80;
+  --color-gold: #c3a872;
+  --color-gold-deep: #7f6535;
 
   /* Roles. Light values here; dark values under [data-theme="dark"] below. */
   --color-canvas: #f6f3ec;
@@ -52,6 +54,9 @@
   --color-action: #173f35;
   --color-action-hover: #10302a;
   --color-on-action: #f6f3ec;
+  --color-mark-ring: #173f35;
+  --color-mark-column: #7f6535;
+  --color-mark-suffix: #7f6535;
 
   --ornament-opacity: 0.75;
 
@@ -97,6 +102,9 @@
   --color-action: #c9ddd3;
   --color-action-hover: #e3ece6;
   --color-on-action: #0f2a23;
+  --color-mark-ring: #c3a872;
+  --color-mark-column: #f6f3ec;
+  --color-mark-suffix: #c3a872;
   --ornament-opacity: 0.28;
 }
 
@@ -506,12 +514,12 @@
   }
 
   .site-header__inner {
-    @apply flex items-center justify-between gap-6;
+    @apply flex items-center justify-between gap-3 sm:gap-6;
     min-height: var(--header-height);
   }
 
   .wordmark {
-    @apply inline-flex min-h-11 items-center gap-3 text-fg no-underline;
+    @apply inline-flex min-h-11 items-center gap-2 text-fg no-underline sm:gap-3;
   }
 
   .wordmark:hover {
@@ -519,7 +527,11 @@
   }
 
   .wordmark__mark {
-    @apply size-8 shrink-0;
+    @apply size-8 shrink-0 sm:size-9;
+
+    @variant md {
+      @apply size-10;
+    }
   }
 
   .wordmark__text {
@@ -527,30 +539,40 @@
   }
 
   .wordmark__name {
-    @apply font-display text-[1.375rem] tracking-[-0.01em];
+    @apply font-display font-medium uppercase tracking-[0.06em];
+    font-size: clamp(0.8125rem, 0.4rem + 2vw, 1.25rem);
   }
 
   .wordmark__suffix {
-    @apply mt-1 text-[0.8125rem] font-semibold text-muted;
+    @apply mt-1.5 text-[0.625rem] font-semibold uppercase tracking-[0.24em];
+    color: var(--color-mark-suffix);
+
+    @variant md {
+      @apply text-[0.6875rem];
+    }
   }
 
-  .gap-mark__capacity {
-    fill: var(--color-strong);
+  .pillar-mark__ring {
+    fill: none;
+    stroke: var(--color-mark-ring);
+    stroke-width: 13;
   }
 
-  .gap-mark__performance {
-    fill: var(--color-pine);
-  }
-
-  .gap-mark__gap {
-    fill: var(--color-terracotta);
+  .pillar-mark__column {
+    fill: var(--color-mark-column);
   }
 
   .main-nav__toggle {
-    @apply inline-flex min-h-11 items-center gap-3 px-2 text-base font-semibold text-fg;
+    @apply inline-flex min-h-11 min-w-11 items-center justify-center gap-3 px-2 text-base font-semibold text-fg;
 
-    @variant md {
+    @variant lg {
       @apply hidden;
+    }
+  }
+
+  .main-nav__toggle-label {
+    @media (width < 24rem) {
+      @apply sr-only;
     }
   }
 
@@ -586,14 +608,15 @@
   }
 
   .main-nav__panel {
-    @apply absolute inset-x-0 top-full hidden border-b border-line bg-canvas px-5 pb-6 pt-2;
+    @apply absolute inset-x-0 top-full hidden border-b border-line bg-canvas pb-6 pt-2;
+    padding-inline: var(--shell-gutter);
     box-shadow: 0 24px 32px -24px rgb(15 42 35 / 0.25);
 
     &[data-open="true"] {
       @apply block;
     }
 
-    @variant md {
+    @variant lg {
       @apply static flex items-center gap-8 border-0 bg-transparent p-0 shadow-none;
     }
   }
@@ -601,15 +624,15 @@
   .main-nav__list {
     @apply flex flex-col;
 
-    @variant md {
+    @variant lg {
       @apply flex-row gap-7;
     }
   }
 
   .main-nav__link {
-    @apply relative flex min-h-12 items-center border-b border-line text-lg text-fg no-underline;
+    @apply relative flex min-h-12 items-center whitespace-nowrap border-b border-line text-lg text-fg no-underline;
 
-    @variant md {
+    @variant lg {
       @apply min-h-11 border-0 text-base;
     }
 
@@ -625,16 +648,16 @@
       content: "";
       @apply absolute bottom-1.5 left-0 h-0.5 w-6 bg-terracotta;
 
-      @variant max-md {
+      @variant max-lg {
         @apply hidden;
       }
     }
   }
 
   .main-nav__cta {
-    @apply mt-6 w-full;
+    @apply mt-6 w-full sm:w-auto;
 
-    @variant md {
+    @variant lg {
       @apply mt-0 w-auto px-5 py-2.5;
     }
   }
@@ -642,7 +665,7 @@
   .site-header__actions {
     @apply flex items-center gap-2;
 
-    @variant md {
+    @variant lg {
       @apply gap-6;
     }
   }
@@ -657,7 +680,7 @@
       @apply text-accent;
     }
 
-    @variant max-md {
+    @variant max-lg {
       @apply order-first;
     }
   }
@@ -716,7 +739,10 @@
   }
 
   .site-footer__brand {
-    @apply grid gap-6;
+    --color-mark-ring: var(--color-gold);
+    --color-mark-column: var(--color-paper);
+    --color-mark-suffix: var(--color-gold);
+    @apply grid content-start justify-items-start gap-6;
 
     @variant md {
       @apply col-span-7;
@@ -727,17 +753,6 @@
       @apply text-paper;
     }
 
-    .wordmark__suffix {
-      @apply text-sage;
-    }
-
-    .gap-mark__capacity {
-      fill: var(--color-paper);
-    }
-
-    .gap-mark__performance {
-      fill: var(--color-sage);
-    }
   }
 
   .site-footer__tagline {
