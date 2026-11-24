@@ -10,6 +10,10 @@ type ArticleViewProps = { post: Post; others: Post[] };
 
 const wordsPerMinute = 200;
 
+/** A wide photo can fill the band with little lost. A square or tall one would lose most of itself,
+    so it is shown whole over a blurred copy of itself. */
+const fillsBand = (photo: { width: number; height: number }) => photo.width / photo.height >= 1.5;
+
 const minutesToRead = (body: string) => Math.max(1, Math.round(body.trim().split(/\s+/).length / wordsPerMinute));
 
 export function ArticleView({ post, others }: ArticleViewProps) {
@@ -18,7 +22,8 @@ export function ArticleView({ post, others }: ArticleViewProps) {
   return (
     <article className="article" aria-labelledby="page-title">
       {cover ? (
-        <div className="article__band">
+        <div className={fillsBand(cover) ? "article__band" : "article__band article__band--fitted"}>
+          {fillsBand(cover) ? null : <Photo photo={{ ...cover, alt: "" }} className="article__backdrop" />}
           <Photo photo={cover} className="article__cover" priority />
         </div>
       ) : null}

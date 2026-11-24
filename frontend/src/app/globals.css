@@ -3601,10 +3601,10 @@
   /* 14. News and events ---------------------------------------------------- */
 
   .news {
-    @apply py-16;
+    @apply pt-8 pb-16;
 
     @variant md {
-      @apply py-24;
+      @apply pt-10 pb-24;
     }
   }
 
@@ -3787,7 +3787,17 @@
   }
 
   .article__band {
-    @apply bg-forest-deep;
+    @apply relative bg-forest-deep;
+    overflow: clip;
+  }
+
+  .article__backdrop {
+    @apply absolute inset-0 size-full scale-110 object-cover;
+    filter: blur(28px) brightness(0.55);
+  }
+
+  .article__band--fitted .article__cover {
+    @apply relative object-contain;
   }
 
   .article__cover {
