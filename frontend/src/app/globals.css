@@ -507,10 +507,10 @@
   }
 
   .wordmark__mark {
-    @apply size-8 shrink-0 sm:size-9;
+    @apply size-10 shrink-0 sm:size-11;
 
     @variant md {
-      @apply size-10;
+      @apply size-12;
     }
   }
 
@@ -544,6 +544,13 @@
 
   .pillar-mark__flute {
     fill: var(--color-mark-ring);
+  }
+
+  .pillar-mark__scroll {
+    fill: none;
+    stroke: var(--color-mark-column);
+    stroke-width: 9;
+    stroke-linecap: round;
   }
 
   .main-nav__toggle {
