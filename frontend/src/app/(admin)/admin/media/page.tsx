@@ -5,6 +5,7 @@ import { PhotoUploader } from "@/components/admin/PhotoUploader";
 import { VideoLinkForm } from "@/components/admin/VideoLinkForm";
 import { listMedia } from "@/lib/admin-api";
 import { load } from "@/lib/admin-load";
+import { libraryId } from "@/lib/media-library";
 
 export const metadata: Metadata = { title: "Media" };
 
@@ -25,10 +26,14 @@ export default async function MediaPage() {
         <VideoLinkForm />
       </div>
 
-      <section aria-labelledby="library-title">
+      <section id={libraryId} className="media-shelf" aria-labelledby="library-title">
         <h2 id="library-title" className="admin-section__title">
           Library
         </h2>
+        <p className="admin-note">
+          Newest first. A photo or video shows on the public site only after you add it to a page under Content, or to
+          a News post.
+        </p>
         {media.length === 0 ? (
           <p className="admin-empty">The library is empty. Upload a photo or add a video link above.</p>
         ) : (

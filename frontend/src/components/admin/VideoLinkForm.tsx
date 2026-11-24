@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { ActionNotice, type Notice } from "@/components/admin/ActionNotice";
 import { addVideo } from "@/lib/content-actions";
+import { showLibrary } from "@/lib/media-library";
 
 export function VideoLinkForm() {
   const [link, setLink] = useState("");
@@ -19,7 +20,8 @@ export function VideoLinkForm() {
       }
       setLink("");
       setTitle("");
-      setNotice({ tone: "ok", message: "Video link added to the library." });
+      setNotice({ tone: "ok", message: "Video link added. It is first in the Library below." });
+      showLibrary();
     });
 
   return (

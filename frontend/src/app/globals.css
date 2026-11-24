@@ -3217,8 +3217,13 @@
     @apply grid gap-4;
   }
 
+  .media-shelf {
+    @apply grid gap-3;
+    scroll-margin-top: 6rem;
+  }
+
   .media-library {
-    @apply grid gap-6;
+    @apply mt-3 grid gap-6;
     grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
   }
 

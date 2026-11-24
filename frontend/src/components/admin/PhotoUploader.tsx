@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState, useTransition, type DragEvent } from "react";
 import { ActionNotice, type Notice } from "@/components/admin/ActionNotice";
 import { addImage } from "@/lib/content-actions";
+import { showLibrary } from "@/lib/media-library";
 
 type Pending = { id: string; file: File; preview: string; alt: string };
 
@@ -94,7 +95,11 @@ export function PhotoUploader() {
           return;
         }
       }
-      setNotice({ tone: "ok", message: `${added} ${added === 1 ? "photo" : "photos"} added to the library.` });
+      setNotice({
+        tone: "ok",
+        message: `${added} ${added === 1 ? "photo" : "photos"} added. ${added === 1 ? "It is" : "They are"} first in the Library below.`,
+      });
+      showLibrary();
     });
 
   return (
