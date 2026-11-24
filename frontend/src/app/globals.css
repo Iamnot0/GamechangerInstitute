@@ -58,7 +58,7 @@
   --color-mark-column: #7f6535;
   --color-mark-suffix: #7f6535;
 
-  --ornament-opacity: 0.85;
+  --ornament-opacity: 0.14;
 
   --font-display: var(--font-newsreader), "Iowan Old Style", Georgia, serif;
   --font-sans: var(--font-source-sans), "Segoe UI", system-ui, sans-serif;
@@ -105,7 +105,7 @@
   --color-mark-ring: #c3a872;
   --color-mark-column: #f6f3ec;
   --color-mark-suffix: #c3a872;
-  --ornament-opacity: 0.6;
+  --ornament-opacity: 0.1;
 }
 
 /* 2. Base ------------------------------------------------------------------ */
@@ -234,133 +234,61 @@
     padding-inline: var(--shell-gutter);
   }
 
-  /* Classical plates on the plain sections, drawn in gold and placed only where no text runs.
-     Page intros stand beside an arch, headed sections carry an arch crown or a capital study,
-     and the rest are met by one column in the page margin, alternating sides down the page. */
+  /* The logo's rings and pillar, enlarged and faint, behind the plain sections. The crop
+     changes from one section to the next so the page never repeats the same view. */
   .page-intro,
-  .journey,
-  .team,
-  .rollout,
+  .lenses,
   .integrity,
   .plan,
+  .rollout,
+  .stewards,
+  .register,
+  .journey,
+  .team,
   .additions,
-  .lenses,
-  .questions,
-  .patron,
   .founder,
   .summary,
   .institute-teaser,
   .mentorship,
-  .stewards,
-  .register {
-    --page-bleed: max(0px, calc((100vw - var(--shell-max)) / 2));
-    --page-inset: calc(var(--page-bleed) + var(--shell-gutter));
+  .questions,
+  .patron {
     position: relative;
     isolation: isolate;
     overflow: clip;
 
-    &::before,
-    &::after {
-      @apply pointer-events-none absolute -z-10 bg-no-repeat;
+    &::before {
+      content: "";
+      @apply pointer-events-none absolute right-0 top-1/2 -z-10 aspect-square bg-contain bg-no-repeat;
+      width: clamp(26rem, 62vw, 54rem);
+      translate: 25% -50%;
+      background-image: url("/images/ornament-rings.svg");
       opacity: var(--ornament-opacity);
     }
   }
 
-  .page-intro {
-    @media (width >= 80rem) {
-      &::before {
-        content: "";
-        @apply bottom-0;
-        right: max(1rem, calc(var(--page-bleed) / 2));
-        width: min(27rem, calc(19.5rem + var(--page-bleed)));
-        max-height: calc(100% - 2.5rem);
-        aspect-ratio: 800 / 934;
-        background-image: url("/images/ornament-arch.svg");
-        background-position: right bottom;
-        background-size: contain;
-      }
-    }
+  .page-intro::before {
+    width: clamp(22rem, 46vw, 40rem);
+    translate: 14% -50%;
   }
 
   .journey,
   .team,
-  .rollout,
-  .integrity,
-  .plan,
-  .additions {
-    @media (width >= 80rem) {
-      &::before {
-        content: "";
-        @apply top-8;
-        right: max(1rem, calc(var(--page-inset) - 3rem));
-        width: 24rem;
-        height: 18rem;
-        background-image: url("/images/ornament-arch.svg");
-        background-position: center top;
-        background-size: 100% auto;
-        mask-image: linear-gradient(180deg, #000 48%, transparent 94%);
-      }
+  .additions,
+  .founder {
+    &::before {
+      @apply bottom-0 left-0 right-auto top-auto;
+      translate: -40% 28%;
     }
   }
 
-  .integrity,
-  .plan,
-  .additions {
-    @media (width >= 80rem) {
-      &::before {
-        background-image: url("/images/ornament-capital.svg");
-      }
-    }
-  }
-
-  .lenses,
+  .summary,
+  .institute-teaser,
+  .mentorship,
   .questions,
-  .patron,
-  .founder,
-  .summary,
-  .institute-teaser,
-  .mentorship,
-  .stewards,
-  .register {
-    --column-box: min(13rem, calc(var(--page-inset) - 1.75rem));
-    --column-x: calc((var(--page-inset) - var(--column-box)) / 2);
-
-    @media (width >= 86rem) {
-      &::before {
-        content: "";
-        @apply bottom-0 top-12;
-        left: var(--column-x);
-        width: var(--column-box);
-        background-image: url("/images/ornament-column.svg");
-        background-position: center bottom;
-        background-size: contain;
-      }
-    }
-  }
-
-  .summary,
-  .institute-teaser,
-  .mentorship,
-  .stewards {
-    @media (width >= 86rem) {
-      &::before {
-        left: auto;
-        right: var(--column-x);
-      }
-    }
-  }
-
-  .register {
-    @media (width >= 86rem) {
-      &::after {
-        content: "";
-        @apply bottom-0 top-12;
-        right: var(--column-x);
-        width: var(--column-box);
-        background-image: url("/images/ornament-column.svg");
-        background-position: center bottom;
-        background-size: contain;
-      }
+  .patron {
+    &::before {
+      @apply top-0;
+      translate: 34% -30%;
     }
   }
 
