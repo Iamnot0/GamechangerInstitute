@@ -234,23 +234,24 @@
     padding-inline: var(--shell-gutter);
   }
 
-  /* The logo's rings and pillar, enlarged and faint, behind the plain sections. The crop
-     changes from one section to the next so the page never repeats the same view. */
+  /* Two faint gold figures behind the plain sections, drawn in one weight: the logo's rings
+     and pillar, and a triple arch on pillars. They alternate down each page, and the crop
+     shifts, so no two neighbouring sections show the same view. */
   .page-intro,
   .lenses,
-  .integrity,
   .plan,
   .rollout,
   .stewards,
   .register,
-  .journey,
-  .team,
-  .additions,
-  .founder,
-  .summary,
   .institute-teaser,
   .mentorship,
   .questions,
+  .journey,
+  .additions,
+  .founder,
+  .summary,
+  .integrity,
+  .team,
   .patron {
     position: relative;
     isolation: isolate;
@@ -271,24 +272,41 @@
     translate: 14% -50%;
   }
 
-  .journey,
-  .team,
-  .additions,
-  .founder {
-    &::before {
-      @apply bottom-0 left-0 right-auto top-auto;
-      translate: -40% 28%;
-    }
-  }
-
-  .summary,
   .institute-teaser,
-  .mentorship,
-  .questions,
-  .patron {
+  .mentorship {
     &::before {
       @apply top-0;
       translate: 34% -30%;
+    }
+  }
+
+  .questions::before {
+    @apply bottom-0 left-0 right-auto top-auto;
+    translate: -40% 28%;
+  }
+
+  .journey,
+  .additions,
+  .founder,
+  .summary,
+  .integrity,
+  .team,
+  .patron {
+    &::before {
+      @apply bottom-0 top-auto;
+      width: clamp(24rem, 52vw, 46rem);
+      translate: 22% 5%;
+      background-image: url("/images/ornament-arch.svg");
+    }
+  }
+
+  .journey,
+  .additions,
+  .founder,
+  .summary {
+    &::before {
+      @apply left-0 right-auto;
+      translate: -22% 5%;
     }
   }
 
