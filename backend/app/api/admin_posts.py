@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from http import HTTPStatus
 from typing import Annotated, Final
 from uuid import UUID
@@ -8,12 +8,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.admin_schemas import VersionGuard
 from app.api.cursors import decode_cursor
-from app.api.media_references import MediaReference, require_media
 from app.api.staff_actions import log_staff_action
-from app.dependencies import MediaRepositoryDep, PostRepositoryDep, StaffDep, require_json_body, require_staff
-from app.domain import MediaKind, PostStatus
+from app.dependencies import (
+    MediaAllowedHostsDep,
+    PhotoRepositoryDep,
+    PostRepositoryDep,
+    StaffDep,
+    require_json_body,
+    require_staff,
+)
+from app.domain import PostDocument, PostStatus
+from app.media_urls import is_stored_file_url
 from app.post_schemas import AdminPost, AdminPostPage, PostRevision, PostSubmission
 from app.problems import InvalidField, invalid_fields, problem_responses
+from app.repositories.photos import PhotoRepository
 from app.repositories.posts import PostContent, PostRepository, PostWriteOutcome
 from app.slugs import slug_candidates, slugify
 
@@ -40,6 +48,17 @@ _SLUG_NEEDED: Final = InvalidField(
 _SLUG_FIXED: Final = InvalidField(
     _SLUG_FIELD, "slug_fixed", "The address of a post cannot change once it has been published."
 )
+_DOCUMENT_URL_FIELD: Final = ("document", "url")
+_DOCUMENT_TAKEN: Final = InvalidField(
+    _DOCUMENT_URL_FIELD, "document_taken", "This PDF is already attached to another post."
+)
+_DOCUMENT_ELSEWHERE: Final = InvalidField(
+    _DOCUMENT_URL_FIELD, "document_host", "Use a PDF uploaded from the post form."
+)
+_TAKEN: Final[Mapping[PostWriteOutcome, InvalidField]] = {
+    PostWriteOutcome.SLUG_TAKEN: _SLUG_TAKEN,
+    PostWriteOutcome.DOCUMENT_TAKEN: _DOCUMENT_TAKEN,
+}
 
 
 @router.get("", responses=problem_responses(422))
@@ -65,15 +84,20 @@ async def list_posts(
     responses=problem_responses(400, 413, 415, 422),
 )
 async def create_post(
-    submission: PostSubmission, staff: StaffDep, posts: PostRepositoryDep, media: MediaRepositoryDep
+    submission: PostSubmission,
+    staff: StaffDep,
+    posts: PostRepositoryDep,
+    photos: PhotoRepositoryDep,
+    allowed_hosts: MediaAllowedHostsDep,
 ) -> AdminPost:
     slugs = _slugs_for(submission)
-    await require_media(media, _media_references(submission))
-    post_id = await posts.create(_content(submission), slugs=slugs, actor_email=staff.email)
-    if post_id is None:
-        raise invalid_fields(_SLUG_TAKEN)
-    log_staff_action(logger, staff, "create_post", post_id=post_id)
-    return await _detail(posts, post_id)
+    _require_stored_document(submission, allowed_hosts)
+    await _require_free_photos(photos, submission.photo_ids)
+    created = await posts.create(_content(submission), slugs=slugs, actor_email=staff.email)
+    if isinstance(created, PostWriteOutcome):
+        raise invalid_fields(_TAKEN[created])
+    log_staff_action(logger, staff, "create_post", post_id=created)
+    return await _detail(posts, created)
 
 
 @router.get("/{post_id}", responses=problem_responses(404, 422))
@@ -89,20 +113,28 @@ async def get_post(post_id: UUID, staff: StaffDep, posts: PostRepositoryDep) -> 
     responses=problem_responses(400, 404, 409, 413, 415, 422),
 )
 async def revise_post(
-    post_id: UUID, revision: PostRevision, staff: StaffDep, posts: PostRepositoryDep, media: MediaRepositoryDep
+    post_id: UUID,
+    revision: PostRevision,
+    staff: StaffDep,
+    posts: PostRepositoryDep,
+    photos: PhotoRepositoryDep,
+    allowed_hosts: MediaAllowedHostsDep,
 ) -> AdminPost:
-    current = await _detail(posts, post_id)
+    _require_stored_document(revision, allowed_hosts)
+    current = await posts.hold(post_id)
+    if current is None:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=_NOT_FOUND_DETAIL)
     if current.version != revision.expected_version:
         raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=_CONFLICT_DETAIL)
     slug = revision.slug or current.slug
     if slug != current.slug and current.published_at is not None:
         raise invalid_fields(_SLUG_FIXED)
-    await require_media(media, _media_references(revision))
+    await _require_free_photos(photos, revision.photo_ids, post_id=post_id)
     outcome = await posts.revise(
         post_id, _content(revision), slug=slug, expected_version=revision.expected_version, actor_email=staff.email
     )
-    if outcome is PostWriteOutcome.SLUG_TAKEN:
-        raise invalid_fields(_SLUG_TAKEN)
+    if outcome in _TAKEN:
+        raise invalid_fields(_TAKEN[outcome])
     _require_written(outcome, wrong_status_detail=_CONFLICT_DETAIL)
     log_staff_action(logger, staff, "revise_post", post_id=post_id)
     return await _detail(posts, post_id)
@@ -155,22 +187,46 @@ def _slugs_for(submission: PostSubmission) -> Iterable[str]:
     return slug_candidates(generated)
 
 
-def _media_references(submission: PostSubmission) -> list[MediaReference]:
-    candidates = (
-        ("cover_media_id", submission.cover_media_id, MediaKind.IMAGE),
-        ("video_media_id", submission.video_media_id, MediaKind.VIDEO),
-    )
-    return [((field,), media_id, kind) for field, media_id, kind in candidates if media_id is not None]
+def _require_stored_document(submission: PostSubmission, allowed_hosts: Sequence[str]) -> None:
+    if submission.document is not None and not is_stored_file_url(submission.document.url, allowed_hosts):
+        raise invalid_fields(_DOCUMENT_ELSEWHERE)
+
+
+async def _require_free_photos(
+    photos: PhotoRepository, photo_ids: Sequence[UUID], *, post_id: UUID | None = None
+) -> None:
+    """Rejects photos listed twice, missing, or shown by a post other than `post_id`, and holds the rest."""
+    owners = await photos.hold(set(photo_ids))
+    errors = [
+        InvalidField(("photo_ids", index), *problem)
+        for index, photo_id in enumerate(photo_ids)
+        if (problem := _photo_problem(photo_id, photo_ids[:index], owners, post_id)) is not None
+    ]
+    if errors:
+        raise invalid_fields(*errors)
+
+
+def _photo_problem(
+    photo_id: UUID, listed_before: Sequence[UUID], owners: Mapping[UUID, UUID | None], post_id: UUID | None
+) -> tuple[str, str] | None:
+    if photo_id in listed_before:
+        return "photo_repeated", "This photo is listed more than once."
+    if photo_id not in owners:
+        return "photo_missing", "This photo is no longer available. Upload it again."
+    if owners[photo_id] not in (None, post_id):
+        return "photo_taken", "This photo already belongs to another post."
+    return None
 
 
 def _content(submission: PostSubmission) -> PostContent:
+    document = submission.document
     return PostContent(
         title=submission.title,
-        summary=submission.summary,
         body=submission.body,
         event_date=submission.event_date,
-        cover_media_id=submission.cover_media_id,
-        video_media_id=submission.video_media_id,
+        youtube_id=submission.youtube_id,
+        photo_ids=submission.photo_ids,
+        document=PostDocument(document.url, document.name, document.size_bytes) if document else None,
     )
 
 

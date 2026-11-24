@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 
-from app.api import admin, admin_content, admin_media, admin_posts, content, enquiries, health
+from app.api import admin, admin_photos, admin_posts, enquiries, health, posts
 from app.auth.verifier import create_staff_verifier
 from app.config import Settings
 from app.db import create_engine, create_session_factory
@@ -95,10 +95,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.include_router(health.router)
     app.include_router(enquiries.router)
-    app.include_router(content.router)
+    app.include_router(posts.router)
     if settings.auth is not None:
         app.include_router(admin.router)
-        app.include_router(admin_media.router)
-        app.include_router(admin_content.router)
+        app.include_router(admin_photos.router)
         app.include_router(admin_posts.router)
     return app

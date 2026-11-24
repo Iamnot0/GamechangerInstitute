@@ -5,7 +5,7 @@ from typing import Any, Final, NamedTuple, get_args
 from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from pydantic_core.core_schema import ErrorType
 from starlette.exceptions import HTTPException
 
@@ -38,7 +38,6 @@ _FIELD_MESSAGES: Final[Mapping[str, str]] = {
     "model_type": "Send the details as a JSON object.",
     "model_attributes_type": "Send the details as a JSON object.",
     "dict_type": "Send the details as a JSON object.",
-    "too_short": "Add at least {min_length}.",
     "too_long": "Keep no more than {max_length}.",
     "date_type": "Use a date such as 2026-11-24.",
     "date_parsing": "Use a date such as 2026-11-24.",
@@ -127,16 +126,6 @@ def invalid_fields(*fields: InvalidField) -> RequestValidationError:
     """Reports body fields that fit their schema but break a rule checked after parsing."""
     return RequestValidationError(
         [{"type": field.code, "loc": ("body", *field.location), "msg": field.message} for field in fields]
-    )
-
-
-def invalid_body(error: ValidationError, *prefix: str) -> RequestValidationError:
-    """Reports a model validated outside FastAPI's own body parsing as field errors under `prefix`."""
-    return RequestValidationError(
-        [
-            detail | {"loc": ("body", *prefix, *detail["loc"])}
-            for detail in error.errors(include_url=False, include_input=False)
-        ]
     )
 
 

@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     media_allowed_hosts: Annotated[tuple[str, ...], NoDecode] = Field(
         default=(),
         description=(
-            "Hosts photo URLs may use: this project's own storage host. Empty refuses every photo, "
+            "Hosts photo and PDF URLs may use: this project's own storage host. Empty refuses every file, "
             "so an unset value fails closed rather than trusting every tenant of a shared storage domain."
         ),
     )

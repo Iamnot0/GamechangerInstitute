@@ -10,10 +10,8 @@ import { PrincipleSection } from "@/components/sections/PrincipleSection";
 import { SuccessStoriesSection } from "@/components/sections/SuccessStoriesSection";
 import { TracksSection } from "@/components/sections/TracksSection";
 import { registerLink, site } from "@/content/site";
-import { getSiteContent } from "@/lib/site-content";
 
-export default async function HomePage() {
-  const content = await getSiteContent();
+export default function HomePage() {
   return (
     <>
       <HomeHero />
@@ -23,8 +21,8 @@ export default async function HomePage() {
       <EnginesSection />
       <JourneySection />
       <TracksSection />
-      <SuccessStoriesSection stories={content.success_stories} logos={content.client_logos} />
-      <InstituteTeaserSection founder={content.founder} stewards={content.stewards} platforms={content.platforms} />
+      <SuccessStoriesSection />
+      <InstituteTeaserSection />
       <IntegritySection />
       <ClosingCta
         title={site.tagline}

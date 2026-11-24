@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -19,16 +18,14 @@ from sqlalchemy import (
     column,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.domain import (
-    BlockKey,
     EnquiryAction,
     EnquiryKind,
     EnquiryStatus,
     ImageContentType,
-    MediaKind,
+    PostDocument,
     PostStatus,
     RoleTransition,
 )
@@ -122,92 +119,32 @@ class RateLimitWindow(Base):
 
 
 class MediaAsset(Base):
-    """A photo held in blob storage (or shipped with the site) or a YouTube video, referenced by id from content."""
+    """A photo uploaded to blob storage for a news post. One row per stored file."""
 
     __tablename__ = "media_assets"
     __table_args__ = (
-        CheckConstraint(column("kind", Text).in_(list(MediaKind)), name="kind"),
         CheckConstraint(column("content_type", Text).in_(list(ImageContentType)), name="content_type"),
         CheckConstraint(column("size_bytes", BigInteger).between(1, 10485760), name="size_bytes"),
         CheckConstraint(column("width", Integer).between(1, 12000), name="width"),
         CheckConstraint(column("height", Integer).between(1, 12000), name="height"),
         CheckConstraint(func.char_length(column("url", Text)) <= 2048, name="url_length"),
         UniqueConstraint("url"),
-        CheckConstraint(func.char_length(column("alt", Text)) <= 300, name="alt_length"),
-        CheckConstraint(func.char_length(column("title", Text)) <= 120, name="title_length"),
-        CheckConstraint(func.char_length(column("youtube_id", Text)) == 11, name="youtube_id_length"),
-        CheckConstraint(
-            "(kind = 'image' AND youtube_id IS NULL AND width IS NOT NULL AND height IS NOT NULL AND alt <> '') "
-            "OR (kind = 'video' AND youtube_id IS NOT NULL AND content_type IS NULL AND size_bytes IS NULL "
-            "AND width IS NULL AND height IS NULL AND alt = '' AND title <> '')",
-            name="kind_fields",
-        ),
+        CheckConstraint(func.char_length(column("alt", Text)).between(1, 300), name="alt_length"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid7)
-    kind: Mapped[str] = mapped_column(Text)
     url: Mapped[str] = mapped_column(Text)
-    content_type: Mapped[str | None] = mapped_column(Text)
-    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
-    width: Mapped[int | None] = mapped_column(Integer)
-    height: Mapped[int | None] = mapped_column(Integer)
+    content_type: Mapped[str] = mapped_column(Text)
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    width: Mapped[int] = mapped_column(Integer)
+    height: Mapped[int] = mapped_column(Integer)
     alt: Mapped[str] = mapped_column(Text)
-    title: Mapped[str] = mapped_column(Text)
-    youtube_id: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     created_by_sub: Mapped[str] = mapped_column(Text)
     created_by_email: Mapped[str | None] = mapped_column(Text)
 
 
 Index("ix_media_assets_created_at_id", MediaAsset.created_at.desc(), MediaAsset.id.desc())
-Index("ix_media_assets_kind_created_at_id", MediaAsset.kind, MediaAsset.created_at.desc(), MediaAsset.id.desc())
-
-
-class ContentBlock(Base):
-    """One editable section of the public site: the live data, an optional unpublished edit, and a write counter."""
-
-    __tablename__ = "content_blocks"
-    __table_args__ = (
-        CheckConstraint(column("key", Text).in_(list(BlockKey)), name="key"),
-        CheckConstraint(column("version", Integer) >= 1, name="version"),
-        CheckConstraint("jsonb_typeof(draft) = 'object'", name="draft_object"),
-        CheckConstraint("jsonb_typeof(published) = 'object'", name="published_object"),
-        CheckConstraint("(draft IS NULL) = (draft_updated_at IS NULL)", name="draft_stamp"),
-        CheckConstraint("(published IS NULL) = (published_at IS NULL)", name="published_stamp"),
-    )
-
-    key: Mapped[str] = mapped_column(Text, primary_key=True)
-    draft: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
-    published: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
-    version: Mapped[int] = mapped_column(Integer)
-    draft_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    draft_updated_by_email: Mapped[str | None] = mapped_column(Text)
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    published_by_email: Mapped[str | None] = mapped_column(Text)
-
-    @property
-    def has_draft(self) -> bool:
-        return self.draft is not None
-
-
-class ContentRevision(Base):
-    """What a block held each time it was published; append-only."""
-
-    __tablename__ = "content_revisions"
-    __table_args__ = (
-        CheckConstraint(column("key", Text).in_(list(BlockKey)), name="key"),
-        CheckConstraint("jsonb_typeof(data) = 'object'", name="data_object"),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid7)
-    key: Mapped[str] = mapped_column(Text)
-    data: Mapped[dict[str, Any]] = mapped_column(JSONB)
-    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    published_by_sub: Mapped[str] = mapped_column(Text)
-    published_by_email: Mapped[str | None] = mapped_column(Text)
-
-
-Index("ix_content_revisions_key_published_at", ContentRevision.key, ContentRevision.published_at.desc())
 
 
 class Post(Base):
@@ -218,8 +155,14 @@ class Post(Base):
         CheckConstraint(column("status", Text).in_(list(PostStatus)), name="status"),
         CheckConstraint("slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND char_length(slug) <= 80", name="slug"),
         CheckConstraint(func.char_length(column("title", Text)).between(1, 120), name="title_length"),
-        CheckConstraint(func.char_length(column("summary", Text)).between(1, 300), name="summary_length"),
-        CheckConstraint(func.char_length(column("body", Text)).between(1, 10000), name="body_length"),
+        CheckConstraint(func.char_length(column("body", Text)) <= 10000, name="body_length"),
+        CheckConstraint(func.char_length(column("youtube_id", Text)) == 11, name="youtube_id_length"),
+        CheckConstraint(func.char_length(column("document_url", Text)) <= 2048, name="document_url_length"),
+        CheckConstraint(func.char_length(column("document_name", Text)).between(1, 120), name="document_name_length"),
+        CheckConstraint(column("document_size_bytes", BigInteger).between(1, 20971520), name="document_size_bytes"),
+        CheckConstraint(
+            "num_nonnulls(document_url, document_name, document_size_bytes) IN (0, 3)", name="document_complete"
+        ),
         CheckConstraint(column("version", Integer) >= 1, name="version"),
         CheckConstraint("status <> 'published' OR published_at IS NOT NULL", name="published_stamp"),
     )
@@ -227,15 +170,12 @@ class Post(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid7)
     slug: Mapped[str] = mapped_column(Text, unique=True)
     title: Mapped[str] = mapped_column(Text)
-    summary: Mapped[str] = mapped_column(Text)
     body: Mapped[str] = mapped_column(Text)
     event_date: Mapped[date | None] = mapped_column(Date)
-    cover_media_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid, ForeignKey(MediaAsset.id, ondelete="RESTRICT"), index=True
-    )
-    video_media_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid, ForeignKey(MediaAsset.id, ondelete="RESTRICT"), index=True
-    )
+    youtube_id: Mapped[str | None] = mapped_column(Text)
+    document_url: Mapped[str | None] = mapped_column(Text, unique=True)
+    document_name: Mapped[str | None] = mapped_column(Text)
+    document_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
     status: Mapped[str] = mapped_column(Text, server_default=PostStatus.DRAFT.value)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     version: Mapped[int] = mapped_column(Integer)
@@ -243,9 +183,30 @@ class Post(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_by_email: Mapped[str | None] = mapped_column(Text)
 
-    cover: Mapped[MediaAsset | None] = relationship(foreign_keys=[cover_media_id], lazy="raise")
-    video: Mapped[MediaAsset | None] = relationship(foreign_keys=[video_media_id], lazy="raise")
+    photos: Mapped[list[MediaAsset]] = relationship(
+        secondary=lambda: PostPhoto.__table__,
+        order_by=lambda: PostPhoto.position,
+        lazy="raise",
+        viewonly=True,
+    )
+
+    @property
+    def document(self) -> PostDocument | None:
+        if self.document_url is None or self.document_name is None or self.document_size_bytes is None:
+            return None
+        return PostDocument(url=self.document_url, name=self.document_name, size_bytes=self.document_size_bytes)
 
 
 Index("ix_posts_updated_at_id", Post.updated_at.desc(), Post.id.desc())
 Index("ix_posts_status_updated_at_id", Post.status, Post.updated_at.desc(), Post.id.desc())
+
+
+class PostPhoto(Base):
+    """A photo's place in its post's gallery. A photo belongs to one post, and a post shows at most twelve."""
+
+    __tablename__ = "post_photos"
+    __table_args__ = (CheckConstraint(column("position", Integer).between(0, 11), name="position"),)
+
+    post_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey(Post.id, ondelete="CASCADE"), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    media_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey(MediaAsset.id, ondelete="RESTRICT"), unique=True)

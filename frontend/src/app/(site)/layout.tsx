@@ -5,9 +5,6 @@ import { SmoothScroll } from "@/components/layout/SmoothScroll";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { organisationGraph } from "@/lib/structured-data";
 
-/** Pages re-read editable content at most every five minutes; publishing refreshes it at once. */
-export const revalidate = 300;
-
 export default function SiteLayout({ children }: LayoutProps<"/">) {
   return (
     <>

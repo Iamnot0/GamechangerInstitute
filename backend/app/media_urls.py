@@ -46,10 +46,6 @@ def youtube_video_id(url: str) -> str | None:
     return match.group(1) if match else None
 
 
-def youtube_watch_url(video_id: str) -> str:
-    return f"https://www.youtube.com/watch?v={video_id}"
-
-
 def https_file_host(url: str) -> str | None:
     """The host of an https file URL already in its one canonical spelling, or nothing for anything else.
 
@@ -61,6 +57,12 @@ def https_file_host(url: str) -> str | None:
     if match is None or not _DOT_SEGMENTS.isdisjoint(match["path"].split("/")):
         return None
     return match["host"]
+
+
+def is_stored_file_url(url: str, allowed_hosts: Iterable[str]) -> bool:
+    """Whether the URL is the canonical address of a file on one of the hosts the project stores files on."""
+    host = https_file_host(url)
+    return host is not None and is_allowed_host(host, allowed_hosts)
 
 
 def is_allowed_host(host: str, allowed: Iterable[str]) -> bool:

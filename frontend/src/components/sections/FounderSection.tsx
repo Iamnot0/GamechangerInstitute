@@ -1,7 +1,7 @@
 import { Photo } from "@/components/ui/Photo";
-import type { SiteContent } from "@/lib/site-content";
+import { founder } from "@/content/institute";
 
-export function FounderSection({ founder }: { founder: SiteContent["founder"] }) {
+export function FounderSection() {
   return (
     <section className="founder" aria-labelledby="founder-title">
       <div className="founder__inner">
@@ -10,7 +10,7 @@ export function FounderSection({ founder }: { founder: SiteContent["founder"] })
         </figure>
         <div className="founder__copy">
           <h2 id="founder-title" className="founder__name">
-            {founder.name} <span>({founder.short_name})</span>
+            {founder.name} <span>({founder.shortName})</span>
           </h2>
           <p className="founder__title">{founder.title}</p>
           <p className="founder__role">{founder.role}</p>

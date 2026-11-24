@@ -7,7 +7,6 @@ import { PageIntro } from "@/components/ui/PageIntro";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { pageMetadata } from "@/lib/metadata";
 import { breadcrumb } from "@/lib/structured-data";
-import { getSiteContent } from "@/lib/site-content";
 
 export const metadata = pageMetadata({
   title: "The Institute",
@@ -16,8 +15,7 @@ export const metadata = pageMetadata({
   path: "/institute/",
 });
 
-export default async function InstitutePage() {
-  const content = await getSiteContent();
+export default function InstitutePage() {
   return (
     <>
       <PageIntro
@@ -25,10 +23,10 @@ export default async function InstitutePage() {
         title="An institute of leaders who have held the role."
         lede="GCI brings serving board members, CEOs, CFOs and CTOs together as stewards, and puts their experience to work for the leaders coming after them."
       />
-      <FounderSection founder={content.founder} />
-      <StewardsSection stewards={content.stewards} />
-      <PlatformsSection platforms={content.platforms} />
-      <PatronSection patron={content.patron} />
+      <FounderSection />
+      <StewardsSection />
+      <PlatformsSection />
+      <PatronSection />
       <ClosingCta
         title={["Steward, partner or participant."]}
         body="Whether you want to join a cohort, bring one to your organisation, or contribute as a steward, start with a short note."

@@ -1,6 +1,6 @@
 # GameChanger Institute API
 
-Accepts enquiries from the website, stores them in PostgreSQL and emails each new one to the Institute's inbox. Invited staff review and progress them through the admin API, where they also keep the media library, edit the site's content blocks and write news posts. The website reads published content and posts from the public endpoints.
+Accepts enquiries from the website, stores them in PostgreSQL and emails each new one to the Institute's inbox. Invited staff review and progress them through the admin API, where they also write the news posts the website reads from the public endpoints.
 
 | Endpoint | Purpose |
 | --- | --- |
@@ -11,28 +11,24 @@ Accepts enquiries from the website, stores them in PostgreSQL and emails each ne
 | `GET /v1/admin/enquiries/summary` | Staff: totals by status and by kind |
 | `GET /v1/admin/enquiries/{id}` | Staff: every field plus status events, newest first |
 | `PATCH /v1/admin/enquiries/{id}` | Staff: `{"status", "expected_status", "note"?}`. `409` when the enquiry is no longer in `expected_status`; `422` when the status would not change |
-| `GET /v1/content` | Published content blocks with media resolved to photos: `{"blocks": {<key>: ...}}`. A block that was never published is absent |
-| `GET /v1/posts` | Published posts, newest event date first (publication day when a post has none). `limit` (1-50, default 50) |
+| `GET /v1/posts` | Published posts with their photos, YouTube id and PDF, newest event date first (publication day when a post has none). `limit` (1-50, default 50) |
 | `GET /v1/posts/{slug}` | One published post, or `404` |
-| `GET /v1/admin/media` | Staff: media library, newest first. `kind`, `limit` (1-100, default 25), `cursor`. Each item lists where it is used |
-| `POST /v1/admin/media` | Staff: record an uploaded photo (`kind: "image"`, its https URL on an allowed host, type, size, dimensions, alt) or a YouTube video (`kind: "video"`, `youtube_url`, `title`) |
-| `PATCH /v1/admin/media/{id}` | Staff: change `alt` or `title` |
-| `DELETE /v1/admin/media/{id}` | Staff: `204`, or `409` naming the blocks (draft or published) and posts that still use it |
-| `GET /v1/admin/content` | Staff: the six blocks with their version and draft state |
-| `GET /v1/admin/content/{key}` | Staff: a block's draft and published data as stored, media by id |
-| `PUT /v1/admin/content/{key}` | Staff: save a draft, `{"data", "expected_version"}`. `409` when the block has moved on from `expected_version` |
-| `POST /v1/admin/content/{key}/publish` | Staff: `{"expected_version"}`. The draft is validated again, goes live and is recorded as a revision. `409` without a draft or on a stale version |
-| `DELETE /v1/admin/content/{key}/draft` | Staff: `{"expected_version"}`. Discards the draft; `409` as for publishing |
+| `POST /v1/admin/photos` | Staff: record a photo the console uploaded to storage: `{"url", "content_type", "size_bytes", "width", "height", "alt"}`. `201 {"id", "src", "width", "height", "alt"}`; `422` when the URL is not a canonical https address on an allowed host or is already recorded |
+| `DELETE /v1/admin/photos/{id}` | Staff: remove an upload that was never attached. `409` when a post shows it |
 | `GET /v1/admin/posts` | Staff: posts, most recently updated first. `status`, `limit` (1-100, default 25), `cursor` |
-| `POST /v1/admin/posts` | Staff: create a draft. The slug comes from the title unless given |
-| `GET`, `PUT`, `DELETE /v1/admin/posts/{id}` | Staff: read, replace (`expected_version`; `409` when stale; `422` when the slug of a post that was ever published would change) or delete |
+| `POST /v1/admin/posts` | Staff: create a draft from `{"title", "body"?, "event_date"?, "youtube_url"?, "photo_ids"?, "document"?, "slug"?}`. The slug comes from the title unless given |
+| `GET`, `PUT`, `DELETE /v1/admin/posts/{id}` | Staff: read, replace (the same fields plus `expected_version`; `409` when stale; `422` when the slug of a post that was ever published would change) or delete |
 | `POST /v1/admin/posts/{id}/publish`, `/unpublish` | Staff: `{"expected_version"}`. `409` when stale or already in that state |
 
 The admin endpoints exist only when `AUTH_ISSUER` is set; otherwise they return `404`.
 
-Every response is sent with `Cache-Control: no-store`, except successful public content and post responses, which carry `public, max-age=0, s-maxage=60, stale-while-revalidate=600` so the edge can serve them. Request bodies are limited to 16 KiB, and to 64 KiB on `/v1/admin/posts`, where a body of 10,000 characters must fit in any script.
+Every response is sent with `Cache-Control: no-store`, except successful public post responses, which carry `public, max-age=0, s-maxage=60, stale-while-revalidate=600` so the edge can serve them. Request bodies are limited to 16 KiB, and to 64 KiB on `/v1/admin/posts`, where a body of 10,000 characters must fit in any script.
 
-A content block's version starts at 0 before anything is written and rises by one on every save, publish or discard; a post's starts at 1. Writes carry the version the client last read and are refused with `409` when it is stale. The backend never receives image files: the console uploads them to blob storage and records the resulting URL here.
+A post's version starts at 1 and rises by one on every replace, publish or unpublish. Those writes carry the version the client last read and are refused with `409` when it is stale.
+
+A post shows up to twelve photos in the order of `photo_ids`, and a photo belongs to one post. `PUT` replaces the whole post: a field left out returns to empty, a photo left out of `photo_ids` has its record deleted in the same transaction, and deleting a post deletes the records of its photos. A post may also carry one PDF, `document: {"url", "name", "size_bytes"}`, whose URL follows the photo rules, ends in `.pdf` and is attached to one post only.
+
+The backend never receives files: the console uploads photos and PDFs to blob storage and records the resulting URLs here, and it removes the stored files once their records are gone.
 
 OpenAPI docs (`/docs`, `/openapi.json`) are served only when `ENVIRONMENT=development`.
 
@@ -89,7 +85,7 @@ Migrations connect with `DATABASE_URL_UNPOOLED` when it is set, otherwise `DATAB
 | `AUTH_AUTHORIZED_PARTIES` | required with `AUTH_ISSUER` | Comma-separated exact origins accepted in the token's `azp` claim, normally the staff console's origin |
 | `AUTH_STAFF_ROLES` | `admin,staff` | Values of the token's `role` claim that grant access |
 | `AUTH_STAFF_ORGANIZATION_ID` | required with `AUTH_ISSUER` | The staff organization's id (`org_...`). Only tokens whose `org_id` claim equals it are staff. |
-| `MEDIA_ALLOWED_HOSTS` | empty | The exact storage host recorded photo URLs may use, always over https: this project's Blob store, such as `abc123.public.blob.vercel-storage.com`. Empty refuses every photo. Avoid a leading-dot suffix on a shared storage domain: it would trust every other tenant's files. |
+| `MEDIA_ALLOWED_HOSTS` | empty | The exact storage host recorded photo and PDF URLs may use, always over https: this project's Blob store, such as `abc123.public.blob.vercel-storage.com`. Empty refuses every photo and PDF. Avoid a leading-dot suffix on a shared storage domain: it would trust every other tenant's files. |
 
 ## Staff authentication
 

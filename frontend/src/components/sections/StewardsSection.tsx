@@ -1,7 +1,6 @@
-import { membershipTiers, method } from "@/content/institute";
-import type { SiteContent } from "@/lib/site-content";
+import { membershipTiers, method, stewards } from "@/content/institute";
 
-export function StewardsSection({ stewards }: { stewards: SiteContent["stewards"] }) {
+export function StewardsSection() {
   return (
     <section className="stewards" aria-labelledby="stewards-title">
       <div className="stewards__inner">

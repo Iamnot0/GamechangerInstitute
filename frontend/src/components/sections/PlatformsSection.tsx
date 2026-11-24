@@ -1,9 +1,8 @@
 import { Photo } from "@/components/ui/Photo";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { appliedAi } from "@/content/institute";
-import type { SiteContent } from "@/lib/site-content";
+import { appliedAi, platforms } from "@/content/institute";
 
-export function PlatformsSection({ platforms }: { platforms: SiteContent["platforms"] }) {
+export function PlatformsSection() {
   return (
     <section className="platforms" aria-labelledby="platforms-title">
       <div className="platforms__inner">
@@ -15,7 +14,7 @@ export function PlatformsSection({ platforms }: { platforms: SiteContent["platfo
         />
 
         <ul className="platforms__list">
-          {platforms.items.map((platform) => (
+          {platforms.map((platform) => (
             <li key={platform.name} className="platforms__item">
               <Photo photo={platform.photo} className="platforms__photo" />
               <h3 className="platforms__name">{platform.name}</h3>

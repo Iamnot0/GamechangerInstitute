@@ -88,4 +88,4 @@ class VersionGuard(BaseModel):
 
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
 
-    expected_version: Annotated[StrictInt, Field(ge=0)]
+    expected_version: Annotated[StrictInt, Field(ge=1)]
