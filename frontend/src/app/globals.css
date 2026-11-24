@@ -3379,10 +3379,6 @@
     @apply text-base;
   }
 
-  .admin-page__header--split {
-    @apply flex flex-wrap items-end justify-between gap-4;
-  }
-
   .admin-page__back {
     @apply text-sm font-semibold text-accent no-underline;
 
@@ -3567,10 +3563,6 @@
     a {
       @apply font-semibold text-accent;
     }
-  }
-
-  .post-document__picker {
-    @apply cursor-pointer py-2;
   }
 
   .post-list {
@@ -3863,11 +3855,6 @@
 
   .post__title {
     @apply text-headline;
-  }
-
-  .post__cover {
-    @apply my-4 w-full;
-    border-radius: var(--radius-control);
   }
 
   .post__body {

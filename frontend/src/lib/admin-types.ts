@@ -21,7 +21,7 @@ export type EnquirySummary = {
   by_kind: Record<EnquiryKind, number>;
 };
 
-export type EnquiryListItem = {
+type EnquiryListItem = {
   id: string;
   kind: EnquiryKind;
   full_name: string;
@@ -38,7 +38,7 @@ export type EnquiryPage = {
   next_cursor: string | null;
 };
 
-export type EnquiryEvent = {
+type EnquiryEvent = {
   id: string;
   actor_sub: string;
   actor_email: string | null;

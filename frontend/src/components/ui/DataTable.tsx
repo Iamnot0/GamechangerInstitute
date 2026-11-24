@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type Column<Key extends string> = { key: Key; header: string };
+type Column<Key extends string> = { key: Key; header: string };
 
 type DataTableProps<Key extends string> = {
   caption: string;

@@ -1,6 +1,6 @@
 export type Theme = "light" | "dark";
 
-export const themeStorageKey = "gci-theme";
+const themeStorageKey = "gci-theme";
 
 /**
  * Runs inline in <head> before first paint, so the stored or system theme is
