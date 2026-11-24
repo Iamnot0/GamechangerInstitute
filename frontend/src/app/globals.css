@@ -53,6 +53,8 @@
   --color-action-hover: #10302a;
   --color-on-action: #f6f3ec;
 
+  --ornament-opacity: 0.75;
+
   --font-display: var(--font-newsreader), "Iowan Old Style", Georgia, serif;
   --font-sans: var(--font-source-sans), "Segoe UI", system-ui, sans-serif;
 
@@ -95,6 +97,7 @@
   --color-action: #c9ddd3;
   --color-action-hover: #e3ece6;
   --color-on-action: #0f2a23;
+  --ornament-opacity: 0.28;
 }
 
 /* 2. Base ------------------------------------------------------------------ */
@@ -221,6 +224,102 @@
     @apply mx-auto w-full;
     max-width: var(--shell-max);
     padding-inline: var(--shell-gutter);
+  }
+
+  /* Pillar line art on the plain sections, in empty space only, never behind text.
+     Headed sections carry the arch crown top right; the rest are framed by full-height
+     pillars in the page margins, once the margins are wide enough to hold them. */
+  .page-intro,
+  .journey,
+  .integrity,
+  .plan,
+  .team,
+  .additions,
+  .rollout,
+  .lenses,
+  .summary,
+  .institute-teaser,
+  .mentorship,
+  .questions,
+  .stewards,
+  .patron,
+  .register,
+  .founder {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+
+    &::before,
+    &::after {
+      @apply pointer-events-none absolute -z-10;
+      opacity: var(--ornament-opacity);
+    }
+  }
+
+  .page-intro,
+  .journey,
+  .integrity,
+  .plan,
+  .team,
+  .additions,
+  .rollout {
+    @media (width >= 80rem) {
+      &::before {
+        content: "";
+        @apply top-10;
+        right: max(var(--shell-gutter), calc((100vw - var(--shell-max)) / 2));
+        width: 22rem;
+        height: 17rem;
+        background: url("/images/ornament-arcade.svg") center top / 100% auto no-repeat;
+        mask-image: linear-gradient(180deg, #000 62%, transparent 92%);
+      }
+    }
+  }
+
+  .page-intro {
+    @media (width >= 80rem) {
+      &::before {
+        @apply bottom-0 top-auto;
+        width: 20rem;
+        height: auto;
+        aspect-ratio: 860 / 1060;
+        background-position: center bottom;
+        mask-image: none;
+      }
+    }
+  }
+
+  .lenses,
+  .summary,
+  .institute-teaser,
+  .mentorship,
+  .questions,
+  .stewards,
+  .patron,
+  .register,
+  .founder {
+    --pillar-width: 5rem;
+    --pillar-x: calc(((100vw - var(--shell-max)) / 2 + var(--shell-gutter) - var(--pillar-width)) / 2);
+
+    @media (width >= 86rem) {
+      &::before {
+        content: "";
+        @apply inset-x-0 bottom-[3.25rem] top-[4.375rem];
+        background:
+          url("/images/ornament-pillar-shaft.svg") left var(--pillar-x) top / var(--pillar-width) auto repeat-y,
+          url("/images/ornament-pillar-shaft.svg") right var(--pillar-x) top / var(--pillar-width) auto repeat-y;
+      }
+
+      &::after {
+        content: "";
+        @apply inset-0;
+        background:
+          url("/images/ornament-pillar-capital.svg") left var(--pillar-x) top / var(--pillar-width) auto no-repeat,
+          url("/images/ornament-pillar-capital.svg") right var(--pillar-x) top / var(--pillar-width) auto no-repeat,
+          url("/images/ornament-pillar-base.svg") left var(--pillar-x) bottom / var(--pillar-width) auto no-repeat,
+          url("/images/ornament-pillar-base.svg") right var(--pillar-x) bottom / var(--pillar-width) auto no-repeat;
+      }
+    }
   }
 
   /* 4. Primitives ---------------------------------------------------------- */
