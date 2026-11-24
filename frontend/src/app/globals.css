@@ -535,7 +535,7 @@
   }
 
   .wordmark__text {
-    @apply flex flex-col leading-none;
+    @apply flex flex-col text-left leading-none;
   }
 
   .wordmark__name {
