@@ -262,7 +262,7 @@
       @apply pointer-events-none absolute right-0 top-1/2 -z-10 aspect-square bg-contain bg-no-repeat;
       width: clamp(26rem, 62vw, 54rem);
       translate: 25% -50%;
-      background-image: url("/images/ornament-rings.svg");
+      background-image: url("/images/backdrop-rings.svg");
       opacity: var(--ornament-opacity);
     }
   }
@@ -296,7 +296,7 @@
       @apply bottom-0 top-auto;
       width: clamp(24rem, 52vw, 46rem);
       translate: 22% 5%;
-      background-image: url("/images/ornament-arch.svg");
+      background-image: url("/images/backdrop-arch.svg");
     }
   }
 
