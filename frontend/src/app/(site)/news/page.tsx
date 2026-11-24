@@ -33,11 +33,11 @@ export default async function NewsPage() {
 
   return (
     <>
-      <PageIntro context="GameChanger Institute" title="News and events" lede="Roundtables, keynotes and cohort milestones." />
+      <PageIntro context="GameChanger Institute" title="News and events" />
       <section className="news" aria-label="Posts">
         <div className="news__inner">
           {posts.length === 0 ? (
-            <p className="news__empty">Nothing has been posted yet. New roundtables, keynotes and cohort milestones will appear here.</p>
+            <p className="news__empty">Coming Soon</p>
           ) : (
             <ul className="news__list">
               {posts.map((post) => (
