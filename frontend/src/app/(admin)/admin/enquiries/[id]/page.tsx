@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ApiErrorState } from "@/components/admin/ApiErrorState";
+import { DeleteEnquiryButton } from "@/components/admin/DeleteEnquiryButton";
 import { EnquiryFacts } from "@/components/admin/EnquiryFacts";
 import { EventTimeline } from "@/components/admin/EventTimeline";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -67,6 +68,7 @@ export default async function EnquiryPage({ params }: PageProps<"/admin/enquirie
               Status
             </h2>
             <StatusForm key={enquiry.status} enquiryId={enquiry.id} current={enquiry.status} />
+            <DeleteEnquiryButton enquiryId={enquiry.id} />
           </section>
           <EventTimeline enquiry={enquiry} />
         </aside>

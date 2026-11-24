@@ -98,3 +98,10 @@ async def change_enquiry_status(
     if enquiry is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=_NOT_FOUND_DETAIL)
     return EnquiryDetail.model_validate(enquiry)
+
+
+@router.delete("/{enquiry_id}", status_code=HTTPStatus.NO_CONTENT, responses=problem_responses(404, 422))
+async def delete_enquiry(enquiry_id: UUID, staff: StaffDep, repository: EnquiryRepositoryDep) -> None:
+    if not await repository.delete(enquiry_id):
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=_NOT_FOUND_DETAIL)
+    log_staff_action(logger, staff, "delete_enquiry", enquiry_id=enquiry_id)

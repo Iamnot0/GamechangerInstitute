@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import func, or_, select, tuple_, update
+from sqlalchemy import delete, func, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -157,6 +157,11 @@ class EnquiryRepository:
         )
         await self._session.commit()
         return StatusChangeOutcome.CHANGED
+
+    async def delete(self, enquiry_id: UUID) -> bool:
+        deleted = await self._session.scalar(delete(Enquiry).where(Enquiry.id == enquiry_id).returning(Enquiry.id))
+        await self._session.commit()
+        return deleted is not None
 
 
 def _escape_like(term: str) -> str:

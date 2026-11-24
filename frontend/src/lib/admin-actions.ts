@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { AdminApiError, updateEnquiryStatus } from "@/lib/admin-api";
+import { redirect } from "next/navigation";
+import { AdminApiError, deleteEnquiry, updateEnquiryStatus } from "@/lib/admin-api";
 import { enquiryStatuses, type EnquiryStatus } from "@/lib/admin-types";
+import { getStaffSession } from "@/lib/staff";
 
 export type StatusFormState =
   | { outcome: "idle" }
@@ -37,4 +39,17 @@ export async function changeEnquiryStatus(_: StatusFormState, form: FormData): P
   revalidatePath(`/admin/enquiries/${id}/`);
   revalidatePath("/admin/enquiries/");
   return { outcome: "saved", status };
+}
+
+export async function removeEnquiry(id: string): Promise<{ ok: false; message: string }> {
+  try {
+    if (!(await getStaffSession()).isStaff) throw new AdminApiError(403, "Only staff can do this.");
+    await deleteEnquiry(id);
+  } catch (error) {
+    if (error instanceof AdminApiError) return { ok: false, message: error.message };
+    throw error;
+  }
+
+  revalidatePath("/admin/enquiries/");
+  redirect("/admin/enquiries/");
 }

@@ -81,6 +81,10 @@ export function updateEnquiryStatus(
   });
 }
 
+export function deleteEnquiry(enquiryId: string): Promise<void> {
+  return request<void>(`/v1/admin/enquiries/${encodeURIComponent(enquiryId)}`, { method: "DELETE" });
+}
+
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
 const id = encodeURIComponent;
 
