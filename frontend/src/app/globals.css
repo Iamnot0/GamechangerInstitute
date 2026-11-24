@@ -1055,7 +1055,11 @@
   }
 
   .hero__context {
-    @apply mb-6 font-display text-xl font-bold italic text-sage;
+    @apply mt-8 font-display text-xl font-bold italic text-sage;
+
+    @variant lg {
+      @apply text-2xl;
+    }
   }
 
   .hero__title {
@@ -1071,7 +1075,7 @@
   }
 
   .hero__lede {
-    @apply mt-8 max-w-[52ch] text-lede text-sage;
+    @apply mt-4 max-w-[52ch] text-lede text-sage;
   }
 
   .hero__actions {

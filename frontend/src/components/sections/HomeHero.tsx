@@ -8,11 +8,11 @@ export function HomeHero() {
       <HeroBackdrop />
       <div className="hero__inner">
         <div className="hero__copy">
-          <p className="hero__context">The GameChanger Leadership Transformation Programme</p>
           <h1 id="hero-title" className="hero__title">
             <span className="hero__word">From</span> <span className="hero__word">capacity</span>{" "}
             <span className="hero__word">to</span> <em className="hero__word">performance.</em>
           </h1>
+          <p className="hero__context">The GameChanger Leadership Transformation Programme</p>
           <p className="hero__lede">
             An ICF-informed pathway to positive transformation for individuals and organisations, through mentorship
             by serving leaders and positive psychology support.
