@@ -7,6 +7,7 @@ const megabyte = 1024 * 1024;
 const folders = [
   { prefix: "photos/", allowedContentTypes: ["image/webp", "image/jpeg", "image/png"], maximumSizeInBytes: 10 * megabyte },
   { prefix: "documents/", allowedContentTypes: ["application/pdf"], maximumSizeInBytes: 20 * megabyte },
+  { prefix: "videos/", allowedContentTypes: ["video/mp4"], maximumSizeInBytes: 200 * megabyte },
 ];
 
 const problem = (status: number, detail: string) =>
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
         request,
         onBeforeGenerateToken: async (pathname) => {
           const folder = folders.find(({ prefix }) => pathname.startsWith(prefix));
-          if (!folder) throw new Error("Files can only be uploaded as post photos or PDFs.");
+          if (!folder) throw new Error("Files can only be uploaded as photos, PDFs or videos.");
           return { allowedContentTypes: folder.allowedContentTypes, maximumSizeInBytes: folder.maximumSizeInBytes, addRandomSuffix: true };
         },
       }),

@@ -12,12 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import Select
 
-from app.domain import PostDocument, PostStatus
+from app.domain import PostDocument, PostKind, PostStatus
 from app.models import MediaAsset, Post, PostPhoto
 from app.pagination import PageCursor
 
 _SLUG_CONSTRAINT: Final = "uq_posts_slug"
 _DOCUMENT_CONSTRAINT: Final = "uq_posts_document_url"
+_VIDEO_CONSTRAINT: Final = "uq_posts_video_url"
 _FIRST_VERSION: Final = 1
 
 
@@ -27,6 +28,7 @@ class PostContent:
     body: str
     event_date: date | None
     youtube_id: str | None
+    video_url: str | None
     photo_ids: Sequence[UUID]
     document: PostDocument | None
 
@@ -36,6 +38,7 @@ class PostContent:
             "body": self.body,
             "event_date": self.event_date,
             "youtube_id": self.youtube_id,
+            "video_url": self.video_url,
             "document_url": self.document.url if self.document else None,
             "document_name": self.document.name if self.document else None,
             "document_size_bytes": self.document.size_bytes if self.document else None,
@@ -55,6 +58,7 @@ class PostWriteOutcome(StrEnum):
     WRONG_STATUS = "wrong_status"
     SLUG_TAKEN = "slug_taken"
     DOCUMENT_TAKEN = "document_taken"
+    VIDEO_TAKEN = "video_taken"
 
 
 class PostRepository:
@@ -67,10 +71,14 @@ class PostRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def page(self, *, status: PostStatus | None, after: PageCursor | None, limit: int) -> PostPage:
+    async def page(
+        self, *, status: PostStatus | None, kind: PostKind | None, after: PageCursor | None, limit: int
+    ) -> PostPage:
         statement = _with_photos(select(Post)).order_by(Post.updated_at.desc(), Post.id.desc()).limit(limit + 1)
         if status is not None:
             statement = statement.where(Post.status == status)
+        if kind is not None:
+            statement = statement.where(Post.kind == kind)
         if after is not None:
             statement = statement.where(tuple_(Post.updated_at, Post.id) < tuple_(after.timestamp, after.id))
 
@@ -89,7 +97,7 @@ class PostRepository:
         statement = select(Post).where(Post.id == post_id).with_for_update().execution_options(populate_existing=True)
         return await self._session.scalar(statement)
 
-    async def published(self, *, limit: int) -> Sequence[Post]:
+    async def published(self, *, kind: PostKind | None, limit: int) -> Sequence[Post]:
         """Published posts, newest first by event date, or by the UTC day of publication when there is none."""
         published_on = cast(func.timezone("UTC", Post.published_at), Date)
         statement = (
@@ -98,6 +106,8 @@ class PostRepository:
             .order_by(func.coalesce(Post.event_date, published_on).desc(), Post.published_at.desc(), Post.id.desc())
             .limit(limit)
         )
+        if kind is not None:
+            statement = statement.where(Post.kind == kind)
         return (await self._session.scalars(statement)).all()
 
     async def published_by_slug(self, slug: str) -> Post | None:
@@ -105,13 +115,14 @@ class PostRepository:
         return await self._session.scalar(statement)
 
     async def create(
-        self, content: PostContent, *, slugs: Iterable[str], actor_email: str | None
+        self, kind: PostKind, content: PostContent, *, slugs: Iterable[str], actor_email: str | None
     ) -> UUID | PostWriteOutcome:
         """Stores a draft under the first slug that is free and returns its id, or says what was already taken."""
         for slug in slugs:
             statement = (
                 insert(Post)
                 .values(
+                    kind=kind,
                     slug=slug,
                     status=PostStatus.DRAFT,
                     version=_FIRST_VERSION,
@@ -217,6 +228,8 @@ class PostRepository:
             return PostWriteOutcome.SLUG_TAKEN
         if _DOCUMENT_CONSTRAINT in violation:
             return PostWriteOutcome.DOCUMENT_TAKEN
+        if _VIDEO_CONSTRAINT in violation:
+            return PostWriteOutcome.VIDEO_TAKEN
         raise error
 
     async def _rejected_write(self, post_id: UUID, expected_version: int) -> PostWriteOutcome:

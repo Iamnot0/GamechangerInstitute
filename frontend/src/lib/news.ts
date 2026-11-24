@@ -1,13 +1,17 @@
 import "server-only";
 import type { Photo } from "@/content/institute";
 
+export type PostKind = "article" | "video" | "document";
+
 export type Post = {
+  kind: PostKind;
   slug: string;
   title: string;
   body: string;
   event_date: string | null;
   published_at: string;
   youtube_id: string | null;
+  video_url: string | null;
   photos: Photo[];
   document: { url: string; name: string; size_bytes: number } | null;
 };
@@ -41,7 +45,7 @@ async function read<T>(path: string): Promise<T | null> {
 
 /** Published posts, newest first. An unreachable service reads as no posts, never as an error page. */
 export async function getPosts(): Promise<Post[]> {
-  const body = await read<{ items?: Post[] }>("/v1/posts?limit=50");
+  const body = await read<{ items?: Post[] }>("/v1/posts?limit=100");
   return Array.isArray(body?.items) ? body.items : [];
 }
 

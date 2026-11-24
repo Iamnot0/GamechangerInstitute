@@ -48,6 +48,24 @@ export const programmeCourse = (description: string) => ({
   provider: { "@id": organisationId },
 });
 
+export const video = (post: Post) => ({
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  name: post.title,
+  description: post.body || post.title,
+  uploadDate: post.published_at,
+  url: absolute(`/news/${post.slug}/`),
+  ...(post.youtube_id
+    ? {
+        embedUrl: `https://www.youtube-nocookie.com/embed/${post.youtube_id}`,
+        thumbnailUrl: `https://i.ytimg.com/vi/${post.youtube_id}/hqdefault.jpg`,
+      }
+    : {}),
+  ...(post.video_url ? { contentUrl: post.video_url } : {}),
+  ...(post.photos[0] ? { thumbnailUrl: absolute(post.photos[0].src) } : {}),
+  publisher: { "@id": organisationId },
+});
+
 export const article = (post: Post) => ({
   "@context": "https://schema.org",
   "@type": "Article",

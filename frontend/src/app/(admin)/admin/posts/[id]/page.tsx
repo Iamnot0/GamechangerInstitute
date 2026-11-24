@@ -5,7 +5,7 @@ import { PostEditor } from "@/components/admin/PostEditor";
 import { getAdminPost } from "@/lib/admin-api";
 import { load } from "@/lib/admin-load";
 
-export const metadata: Metadata = { title: "Edit post" };
+export const metadata: Metadata = { title: "Edit" };
 
 export default async function PostPage({ params }: PageProps<"/admin/posts/[id]">) {
   const { id } = await params;
@@ -26,7 +26,7 @@ export default async function PostPage({ params }: PageProps<"/admin/posts/[id]"
           </p>
         ) : null}
       </header>
-      <PostEditor post={post} />
+      <PostEditor kind={post.kind} post={post} />
     </div>
   );
 }

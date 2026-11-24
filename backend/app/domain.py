@@ -40,6 +40,12 @@ class PostStatus(StrEnum):
     PUBLISHED = "published"
 
 
+class PostKind(StrEnum):
+    ARTICLE = "article"
+    VIDEO = "video"
+    DOCUMENT = "document"
+
+
 class StaffRole(StrEnum):
     ADMIN = "admin"
     STAFF = "staff"

@@ -17,9 +17,10 @@ from app.dependencies import (
     require_json_body,
     require_staff,
 )
-from app.domain import PostDocument, PostStatus
+from app.domain import PostDocument, PostKind, PostStatus
 from app.media_urls import is_stored_file_url
-from app.post_schemas import AdminPost, AdminPostPage, PostRevision, PostSubmission
+from app.post_rules import kind_problems
+from app.post_schemas import AdminPost, AdminPostPage, PostFields, PostRevision, PostSubmission
 from app.problems import InvalidField, invalid_fields, problem_responses
 from app.repositories.photos import PhotoRepository
 from app.repositories.posts import PostContent, PostRepository, PostWriteOutcome
@@ -55,9 +56,13 @@ _DOCUMENT_TAKEN: Final = InvalidField(
 _DOCUMENT_ELSEWHERE: Final = InvalidField(
     _DOCUMENT_URL_FIELD, "document_host", "Use a PDF uploaded from the post form."
 )
+_VIDEO_URL_FIELD: Final = ("video_url",)
+_VIDEO_TAKEN: Final = InvalidField(_VIDEO_URL_FIELD, "video_taken", "This video is already attached to another post.")
+_VIDEO_ELSEWHERE: Final = InvalidField(_VIDEO_URL_FIELD, "video_host", "Use a video uploaded from the post form.")
 _TAKEN: Final[Mapping[PostWriteOutcome, InvalidField]] = {
     PostWriteOutcome.SLUG_TAKEN: _SLUG_TAKEN,
     PostWriteOutcome.DOCUMENT_TAKEN: _DOCUMENT_TAKEN,
+    PostWriteOutcome.VIDEO_TAKEN: _VIDEO_TAKEN,
 }
 
 
@@ -66,10 +71,11 @@ async def list_posts(
     staff: StaffDep,
     posts: PostRepositoryDep,
     status: PostStatus | None = None,
+    kind: PostKind | None = None,
     cursor: Annotated[str | None, Query(max_length=200)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
 ) -> AdminPostPage:
-    page = await posts.page(status=status, after=decode_cursor(cursor), limit=limit)
+    page = await posts.page(status=status, kind=kind, after=decode_cursor(cursor), limit=limit)
     log_staff_action(logger, staff, "list_posts")
     return AdminPostPage(
         items=[AdminPost.model_validate(post) for post in page.posts],
@@ -91,9 +97,10 @@ async def create_post(
     allowed_hosts: MediaAllowedHostsDep,
 ) -> AdminPost:
     slugs = _slugs_for(submission)
-    _require_stored_document(submission, allowed_hosts)
+    _require_suited_to(submission.kind, submission)
+    _require_stored_files(submission, allowed_hosts)
     await _require_free_photos(photos, submission.photo_ids)
-    created = await posts.create(_content(submission), slugs=slugs, actor_email=staff.email)
+    created = await posts.create(submission.kind, _content(submission), slugs=slugs, actor_email=staff.email)
     if isinstance(created, PostWriteOutcome):
         raise invalid_fields(_TAKEN[created])
     log_staff_action(logger, staff, "create_post", post_id=created)
@@ -120,7 +127,6 @@ async def revise_post(
     photos: PhotoRepositoryDep,
     allowed_hosts: MediaAllowedHostsDep,
 ) -> AdminPost:
-    _require_stored_document(revision, allowed_hosts)
     current = await posts.hold(post_id)
     if current is None:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=_NOT_FOUND_DETAIL)
@@ -129,6 +135,8 @@ async def revise_post(
     slug = revision.slug or current.slug
     if slug != current.slug and current.published_at is not None:
         raise invalid_fields(_SLUG_FIXED)
+    _require_suited_to(PostKind(current.kind), revision)
+    _require_stored_files(revision, allowed_hosts)
     await _require_free_photos(photos, revision.photo_ids, post_id=post_id)
     outcome = await posts.revise(
         post_id, _content(revision), slug=slug, expected_version=revision.expected_version, actor_email=staff.email
@@ -187,9 +195,24 @@ def _slugs_for(submission: PostSubmission) -> Iterable[str]:
     return slug_candidates(generated)
 
 
-def _require_stored_document(submission: PostSubmission, allowed_hosts: Sequence[str]) -> None:
-    if submission.document is not None and not is_stored_file_url(submission.document.url, allowed_hosts):
-        raise invalid_fields(_DOCUMENT_ELSEWHERE)
+def _require_suited_to(kind: PostKind, fields: PostFields) -> None:
+    problems = kind_problems(kind, fields)
+    if problems:
+        raise invalid_fields(*problems)
+
+
+def _require_stored_files(fields: PostFields, allowed_hosts: Sequence[str]) -> None:
+    """Rejects a PDF or video that is not one of the files the project stores."""
+    elsewhere = [
+        problem
+        for url, problem in (
+            (fields.document.url if fields.document else None, _DOCUMENT_ELSEWHERE),
+            (fields.video_url, _VIDEO_ELSEWHERE),
+        )
+        if url is not None and not is_stored_file_url(url, allowed_hosts)
+    ]
+    if elsewhere:
+        raise invalid_fields(*elsewhere)
 
 
 async def _require_free_photos(
@@ -218,13 +241,14 @@ def _photo_problem(
     return None
 
 
-def _content(submission: PostSubmission) -> PostContent:
+def _content(submission: PostFields) -> PostContent:
     document = submission.document
     return PostContent(
         title=submission.title,
         body=submission.body,
         event_date=submission.event_date,
         youtube_id=submission.youtube_id,
+        video_url=submission.video_url,
         photo_ids=submission.photo_ids,
         document=PostDocument(document.url, document.name, document.size_bytes) if document else None,
     )

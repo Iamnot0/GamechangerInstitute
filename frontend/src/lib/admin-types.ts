@@ -72,22 +72,28 @@ export type NewPhoto = { url: string; content_type: string; size_bytes: number; 
 
 export type PostDocument = { url: string; name: string; size_bytes: number };
 
+export const postKinds = ["article", "video", "document"] as const;
+export type PostKind = (typeof postKinds)[number];
+
 export type PostFields = {
   title: string;
   body: string;
   event_date: string | null;
   youtube_url: string | null;
+  video_url: string | null;
   photo_ids: string[];
   document: PostDocument | null;
 };
 
 export type AdminPost = {
   id: string;
+  kind: PostKind;
   slug: string;
   title: string;
   body: string;
   event_date: string | null;
   youtube_id: string | null;
+  video_url: string | null;
   status: "draft" | "published";
   published_at: string | null;
   version: number;

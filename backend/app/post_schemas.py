@@ -7,7 +7,7 @@ from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, Field
 from pydantic_core import PydanticCustomError
 
 from app.admin_schemas import VersionGuard
-from app.domain import PostStatus
+from app.domain import PostKind, PostStatus
 from app.media_urls import https_file_host, youtube_video_id
 from app.photo_schemas import Photo, StoredPhoto
 from app.slugs import SLUG_MAX_LENGTH, SLUG_PATTERN
@@ -49,6 +49,12 @@ def _https_pdf_url(value: str) -> str:
     return value
 
 
+def _https_mp4_url(value: str) -> str:
+    if https_file_host(value) is None or not value.endswith(".mp4"):
+        raise PydanticCustomError("video_url", "Use the https address of an uploaded MP4 video.")
+    return value
+
+
 Slug = Annotated[str, StringConstraints(strip_whitespace=True, max_length=SLUG_MAX_LENGTH), AfterValidator(_slug)]
 YoutubeLink = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500), AfterValidator(_youtube_id)]
 
@@ -61,20 +67,28 @@ class DocumentSubmission(BaseModel):
     size_bytes: Annotated[StrictInt, Field(ge=1, le=MAX_DOCUMENT_BYTES)]
 
 
-class PostSubmission(BaseModel):
+VideoFile = Annotated[str, StringConstraints(strip_whitespace=True, max_length=2048), AfterValidator(_https_mp4_url)]
+
+
+class PostFields(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
 
     title: Line120
     body: PostBody = ""
     event_date: Annotated[date | None, BlankAsNone] = None
     youtube_id: Annotated[YoutubeLink | None, BlankAsNone] = Field(default=None, validation_alias="youtube_url")
+    video_url: Annotated[VideoFile | None, BlankAsNone] = None
     photo_ids: Annotated[list[UUID], Field(max_length=MAX_PHOTOS)] = []
     document: DocumentSubmission | None = None
     slug: Annotated[Slug | None, BlankAsNone] = None
 
 
-class PostRevision(PostSubmission, VersionGuard):
-    pass
+class PostSubmission(PostFields):
+    kind: PostKind
+
+
+class PostRevision(PostFields, VersionGuard):
+    """A post keeps the kind it was created with, so a revision does not name one."""
 
 
 class Document(BaseModel):
@@ -89,11 +103,13 @@ class AdminPost(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    kind: PostKind
     slug: str
     title: str
     body: str
     event_date: date | None
     youtube_id: str | None
+    video_url: str | None
     status: PostStatus
     published_at: AwareDatetime | None
     version: int
@@ -112,12 +128,14 @@ class AdminPostPage(BaseModel):
 class PublicPost(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    kind: PostKind
     slug: str
     title: str
     body: str
     event_date: date | None
     published_at: AwareDatetime
     youtube_id: str | None
+    video_url: str | None
     photos: list[Photo]
     document: Document | None
 

@@ -12,7 +12,7 @@ if (mediaHost && !/^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/.test(mediaHo
 }
 const mediaOrigins = `${mediaHost ? `https://${mediaHost} ` : ""}https://i.ytimg.com`;
 
-type Csp = { script?: string; connect?: string; img?: string; frame?: string; worker?: string };
+type Csp = { script?: string; connect?: string; img?: string; media?: string; frame?: string; worker?: string };
 
 // Pages are prerendered and cannot carry per-request nonces, so inline scripts are allowed
 // (Next's runtime payload and the theme script). Everything else is same-origin unless listed.
@@ -22,7 +22,7 @@ function contentSecurityPolicy(extra: Csp = {}): string {
     `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${extra.script ?? ""}`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob:${extra.img ?? ""}`,
-    "media-src 'self'",
+    `media-src 'self'${extra.media ?? ""}`,
     "font-src 'self'",
     `connect-src 'self'${crossOriginApi}${isDev ? " ws:" : ""}${extra.connect ?? ""}`,
     `frame-src ${extra.frame ?? "'none'"}`,
@@ -42,11 +42,18 @@ const baseHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
 ];
 
-const siteCsp = contentSecurityPolicy({ img: ` ${mediaOrigins}`, frame: "https://www.youtube-nocookie.com" });
+const uploadedVideos = mediaHost ? ` https://${mediaHost}` : "";
+const siteCsp = contentSecurityPolicy({
+  img: ` ${mediaOrigins}`,
+  media: uploadedVideos,
+  frame: "https://www.youtube-nocookie.com",
+});
 // vercel.com receives photo and PDF uploads straight from the browser on the staff console.
+// blob: lets the post form read a frame from a chosen video file to use as its thumbnail.
 const staffCsp = contentSecurityPolicy({
   connect: " https://vercel.com",
   img: ` ${mediaOrigins}`,
+  media: ` blob:${uploadedVideos}`,
 });
 
 const nextConfig: NextConfig = {

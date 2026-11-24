@@ -5,7 +5,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import * as api from "@/lib/admin-api";
 import { AdminApiError, type FieldError } from "@/lib/admin-api";
-import type { NewPhoto, PostDocument, PostFields, PostPhoto } from "@/lib/admin-types";
+import type { AdminPost, NewPhoto, PostDocument, PostFields, PostKind, PostPhoto } from "@/lib/admin-types";
 import { postsTag } from "@/lib/news";
 import { getStaffSession } from "@/lib/staff";
 
@@ -13,17 +13,26 @@ export type ActionResult<T = void> =
   | { ok: true; value: T }
   | { ok: false; message: string; fieldErrors: readonly FieldError[]; conflict: boolean };
 
-export type SavedPost = { id: string; version: number; published: boolean; photos: PostPhoto[]; document: PostDocument | null };
+export type SavedPost = {
+  id: string;
+  version: number;
+  published: boolean;
+  photos: PostPhoto[];
+  document: PostDocument | null;
+  videoUrl: string | null;
+};
 
 const photoFolder = "photos/";
 const documentFolder = "documents/";
+const videoFolder = "videos/";
 const storageOrigin = process.env.MEDIA_HOST ? `https://${process.env.MEDIA_HOST.trim()}/` : null;
 
 /** True only for an address inside one of this site's own upload folders; nothing else is ever sent to storage. */
 const isOwnUpload = (url: unknown, folder: string): url is string =>
   typeof url === "string" && storageOrigin !== null && url.startsWith(storageOrigin + folder) && !/[?#\\\s]|\/\.{1,2}(\/|$)/.test(url);
 
-const isOwnFile = (url: unknown): url is string => isOwnUpload(url, photoFolder) || isOwnUpload(url, documentFolder);
+const isOwnFile = (url: unknown): url is string =>
+  [photoFolder, documentFolder, videoFolder].some((folder) => isOwnUpload(url, folder));
 
 /** Every action is a public endpoint in its own right, so each one proves the caller is staff
     before it touches storage or the staff service, and again the service checks for itself. */
@@ -69,6 +78,16 @@ async function confirmDocument(document: PostDocument | null): Promise<PostDocum
   return { url: stored.url, name: String(document.name).trim().slice(0, 120), size_bytes: stored.size };
 }
 
+/** An uploaded video is recorded with the post itself, so it too is confirmed with storage when the post is saved. */
+async function confirmVideo(url: string | null): Promise<string | null> {
+  if (!url) return null;
+  const stored = isOwnUpload(url, videoFolder) ? await head(url).catch(() => null) : null;
+  if (!stored || stored.contentType !== "video/mp4") {
+    throw new AdminApiError(422, "This video was not found in the site's storage. Upload it again.");
+  }
+  return stored.url;
+}
+
 /** For a photo that was uploaded and then taken out again before the post was saved. The file
     to remove is the one the service says belonged to that record, never one the browser names. */
 export async function discardPhoto(photoId: string): Promise<ActionResult> {
@@ -78,21 +97,52 @@ export async function discardPhoto(photoId: string): Promise<ActionResult> {
   });
 }
 
+/** For a PDF or video that was uploaded and then taken out again before the post was saved.
+    The browser names the file here, so it is removed only when no post refers to it. */
+export async function discardUpload(url: string): Promise<ActionResult> {
+  return attempt(async () => {
+    if (!isOwnUpload(url, documentFolder) && !isOwnUpload(url, videoFolder)) return;
+    const posts = await api.listPosts();
+    if (posts.some((post) => post.document?.url === url || post.video_url === url)) return;
+    await removeFiles([url]);
+  });
+}
+
+const saved = (post: AdminPost): SavedPost => ({
+  id: post.id,
+  version: post.version,
+  published: post.status === "published",
+  photos: post.photos,
+  document: post.document,
+  videoUrl: post.video_url,
+});
+
 const refresh = (published: boolean) => {
   revalidatePath("/admin/posts/");
   if (published) updateTag(postsTag);
 };
 
-export async function savePost(id: string | null, fields: PostFields, version: number, publish: boolean): Promise<ActionResult<SavedPost>> {
+export async function savePost(
+  target: { id: string } | { kind: PostKind },
+  fields: PostFields,
+  version: number,
+  publish: boolean,
+): Promise<ActionResult<SavedPost>> {
+  const id = "id" in target ? target.id : null;
   const result = await attempt(async () => {
     const before = id ? await api.getAdminPost(id) : null;
-    const checked = { ...fields, document: await confirmDocument(fields.document) };
-    let post = id ? await api.updatePost(id, checked, version) : await api.createPost(checked);
+    const checked = {
+      ...fields,
+      document: await confirmDocument(fields.document),
+      video_url: await confirmVideo(fields.video_url),
+    };
+    let post = "id" in target ? await api.updatePost(target.id, checked, version) : await api.createPost(target.kind, checked);
     if (publish && post.status !== "published") post = await api.setPostPublished(post.id, true, post.version);
 
     const kept = new Set(post.photos.map((photo) => photo.id));
     const dropped = (before?.photos ?? []).filter((photo) => !kept.has(photo.id)).map((photo) => photo.src);
     if (before?.document && before.document.url !== post.document?.url) dropped.push(before.document.url);
+    if (before?.video_url && before.video_url !== post.video_url) dropped.push(before.video_url);
     await removeFiles(dropped);
     return post;
   });
@@ -102,7 +152,7 @@ export async function savePost(id: string | null, fields: PostFields, version: n
   refresh(published);
   if (!id) redirect("/admin/posts/");
   revalidatePath(`/admin/posts/${id}/`);
-  return { ok: true, value: { id: result.value.id, version: result.value.version, published, photos: result.value.photos, document: result.value.document } };
+  return { ok: true, value: saved(result.value) };
 }
 
 export async function unpublishPost(id: string, version: number): Promise<ActionResult<SavedPost>> {
@@ -110,14 +160,18 @@ export async function unpublishPost(id: string, version: number): Promise<Action
   if (!result.ok) return result;
   refresh(true);
   revalidatePath(`/admin/posts/${id}/`);
-  return { ok: true, value: { id, version: result.value.version, published: false, photos: result.value.photos, document: result.value.document } };
+  return { ok: true, value: saved(result.value) };
 }
 
 export async function removePost(id: string): Promise<ActionResult> {
   const result = await attempt(async () => {
     const post = await api.getAdminPost(id);
     await api.deletePost(id);
-    await removeFiles([...post.photos.map((photo) => photo.src), ...(post.document ? [post.document.url] : [])]);
+    await removeFiles([
+      ...post.photos.map((photo) => photo.src),
+      ...(post.document ? [post.document.url] : []),
+      ...(post.video_url ? [post.video_url] : []),
+    ]);
   });
   if (!result.ok) return result;
   refresh(true);

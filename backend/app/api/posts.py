@@ -4,6 +4,7 @@ from typing import Annotated, Final
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.dependencies import PostRepositoryDep
+from app.domain import PostKind
 from app.post_schemas import PublicPost, PublicPostList
 from app.problems import problem_responses
 
@@ -19,8 +20,11 @@ router = APIRouter(prefix="/v1/posts", tags=["posts"], dependencies=[Depends(_ca
 
 
 @router.get("", responses=problem_responses(422))
-async def list_posts(posts: PostRepositoryDep, limit: Annotated[int, Query(ge=1, le=50)] = 50) -> PublicPostList:
-    return PublicPostList(items=[PublicPost.model_validate(post) for post in await posts.published(limit=limit)])
+async def list_posts(
+    posts: PostRepositoryDep, kind: PostKind | None = None, limit: Annotated[int, Query(ge=1, le=100)] = 50
+) -> PublicPostList:
+    published = await posts.published(kind=kind, limit=limit)
+    return PublicPostList(items=[PublicPost.model_validate(post) for post in published])
 
 
 @router.get("/{slug}", responses=problem_responses(404, 422))

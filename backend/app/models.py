@@ -26,6 +26,7 @@ from app.domain import (
     EnquiryStatus,
     ImageContentType,
     PostDocument,
+    PostKind,
     PostStatus,
     RoleTransition,
     StaffRole,
@@ -149,7 +150,10 @@ Index("ix_media_assets_created_at_id", MediaAsset.created_at.desc(), MediaAsset.
 
 
 class Post(Base):
-    """A news or events post. `published_at` survives unpublishing, so it also records that the slug is fixed."""
+    """An article, a video or a document on the Media page.
+
+    `published_at` survives unpublishing, so it also records that the slug is fixed.
+    """
 
     __tablename__ = "posts"
     __table_args__ = (
@@ -157,7 +161,10 @@ class Post(Base):
         CheckConstraint("slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND char_length(slug) <= 80", name="slug"),
         CheckConstraint(func.char_length(column("title", Text)).between(1, 120), name="title_length"),
         CheckConstraint(func.char_length(column("body", Text)) <= 10000, name="body_length"),
+        CheckConstraint(column("kind", Text).in_(list(PostKind)), name="kind"),
         CheckConstraint(func.char_length(column("youtube_id", Text)) == 11, name="youtube_id_length"),
+        CheckConstraint(func.char_length(column("video_url", Text)) <= 2048, name="video_url_length"),
+        CheckConstraint("num_nonnulls(youtube_id, video_url) <= 1", name="one_video_source"),
         CheckConstraint(func.char_length(column("document_url", Text)) <= 2048, name="document_url_length"),
         CheckConstraint(func.char_length(column("document_name", Text)).between(1, 120), name="document_name_length"),
         CheckConstraint(column("document_size_bytes", BigInteger).between(1, 20971520), name="document_size_bytes"),
@@ -169,11 +176,13 @@ class Post(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid7)
+    kind: Mapped[str] = mapped_column(Text)
     slug: Mapped[str] = mapped_column(Text, unique=True)
     title: Mapped[str] = mapped_column(Text)
     body: Mapped[str] = mapped_column(Text)
     event_date: Mapped[date | None] = mapped_column(Date)
     youtube_id: Mapped[str | None] = mapped_column(Text)
+    video_url: Mapped[str | None] = mapped_column(Text, unique=True)
     document_url: Mapped[str | None] = mapped_column(Text, unique=True)
     document_name: Mapped[str | None] = mapped_column(Text)
     document_size_bytes: Mapped[int | None] = mapped_column(BigInteger)

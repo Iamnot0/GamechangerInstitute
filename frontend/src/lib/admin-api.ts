@@ -8,6 +8,7 @@ import type {
   EnquirySummary,
   NewPhoto,
   PostFields,
+  PostKind,
   PostPhoto,
   StaffRole,
   StaffUserItem,
@@ -116,12 +117,21 @@ export const createPhoto = (photo: NewPhoto) => request<PostPhoto>("/v1/admin/ph
 export const deletePhoto = (photoId: string) => request<{ src: string }>(`/v1/admin/photos/${id(photoId)}`, { method: "DELETE" });
 
 export async function listPosts(): Promise<AdminPost[]> {
-  return (await request<{ items: AdminPost[] }>("/v1/admin/posts?limit=100")).items;
+  const posts: AdminPost[] = [];
+  let cursor: string | null = null;
+  do {
+    const query: string = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
+    const page = await request<{ items: AdminPost[]; next_cursor: string | null }>(`/v1/admin/posts?limit=100${query}`);
+    posts.push(...page.items);
+    cursor = page.next_cursor;
+  } while (cursor);
+  return posts;
 }
 
 export const getAdminPost = (postId: string) => request<AdminPost>(`/v1/admin/posts/${id(postId)}`);
 
-export const createPost = (fields: PostFields) => request<AdminPost>("/v1/admin/posts", json("POST", fields));
+export const createPost = (kind: PostKind, fields: PostFields) =>
+  request<AdminPost>("/v1/admin/posts", json("POST", { kind, ...fields }));
 
 export const updatePost = (postId: string, fields: PostFields, expectedVersion: number) =>
   request<AdminPost>(`/v1/admin/posts/${id(postId)}`, json("PUT", { ...fields, expected_version: expectedVersion }));
