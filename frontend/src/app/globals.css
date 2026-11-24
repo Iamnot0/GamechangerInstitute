@@ -2946,27 +2946,23 @@
   }
 
   .console__account {
-    @apply ml-auto flex items-center gap-4;
+    @apply ml-auto flex items-center gap-1;
 
     @variant lg {
-      @apply ml-0 grid gap-2 border-t border-line pt-4;
+      @apply ml-0 border-t border-line pt-4;
     }
   }
 
-  .console__email {
-    @apply hidden px-3 text-sm break-all text-muted;
+  .console__user {
+    @apply hidden min-w-0 flex-1 truncate px-3 font-semibold text-fg;
 
     @variant md {
       @apply block;
     }
   }
 
-  .console__account-tools {
-    @apply flex items-center justify-between gap-4;
-  }
-
   .console__tool {
-    @apply flex min-h-11 cursor-pointer items-center gap-3 border-0 bg-transparent px-3 font-semibold text-muted;
+    @apply flex size-11 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent text-muted;
     border-radius: var(--radius-control);
 
     &:hover {
@@ -2974,11 +2970,15 @@
     }
   }
 
+  .console__tool--round {
+    @apply rounded-full border border-line-strong;
+  }
+
   .console__toggle {
     @apply hidden;
 
     @variant lg {
-      @apply flex w-full;
+      @apply flex;
     }
   }
 
@@ -2986,9 +2986,8 @@
     .console__sidebar[data-collapsed="true"] {
       .wordmark__text,
       .console__label,
-      .console__email,
-      .console-nav__label,
-      .console__tool-label {
+      .console__user,
+      .console-nav__label {
         @apply sr-only;
       }
 
@@ -2996,8 +2995,7 @@
         @apply items-center px-2;
       }
 
-      .console-nav__link,
-      .console__tool {
+      .console-nav__link {
         @apply justify-center px-0;
       }
 
@@ -3014,22 +3012,30 @@
         @apply absolute -top-1 -right-1 px-1.5 text-xs;
       }
 
-      .console__account-tools {
+      .console__account {
         @apply flex-col gap-2;
-      }
-
-      .console__tool {
-        @apply w-11;
       }
     }
   }
 
+  .console__page {
+    @apply min-w-0;
+  }
+
+  .console__topbar {
+    @apply flex justify-end px-5 pt-3;
+
+    @variant lg {
+      @apply px-12 pt-5;
+    }
+  }
+
   .console__main {
-    @apply w-full px-5 py-8;
+    @apply w-full px-5 pt-2 pb-8;
     max-width: 78rem;
 
     @variant lg {
-      @apply px-12 py-12;
+      @apply px-12 pt-2 pb-12;
     }
   }
 
@@ -3362,7 +3368,7 @@
   }
 
   .post-editor {
-    @apply grid items-start gap-6;
+    @apply grid gap-6;
 
     @variant xl {
       grid-template-columns: minmax(0, 1fr) 22rem;
@@ -3371,7 +3377,26 @@
 
   .post-editor__main,
   .post-editor__side {
-    @apply grid gap-6;
+    @apply grid content-start gap-6;
+  }
+
+  /* The two columns end level: the details card runs the full height and its text box takes what is spare. */
+  @variant xl {
+    .post-editor__main {
+      @apply content-stretch;
+    }
+
+    .post-editor__main .editor-card {
+      @apply flex flex-col;
+    }
+
+    .post-editor__main .form-field:has(textarea) {
+      @apply flex flex-1 flex-col;
+    }
+
+    .post-editor__main textarea {
+      @apply flex-1;
+    }
   }
 
   .editor-card {

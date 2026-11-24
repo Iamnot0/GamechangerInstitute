@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { ConsoleIcon } from "@/components/admin/ConsoleIcon";
 import { ConsoleNav, type ConsoleNavItem } from "@/components/admin/ConsoleNav";
-import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Wordmark } from "@/components/layout/Wordmark";
 import { signOutStaff } from "@/lib/auth-actions";
 import { consoleMenuCookie } from "@/lib/console-menu";
@@ -11,6 +10,9 @@ import { consoleMenuCookie } from "@/lib/console-menu";
 type ConsoleSidebarProps = { email: string | null; isAdmin: boolean; newEnquiries: number | null; startsCollapsed: boolean };
 
 const oneYear = 60 * 60 * 24 * 365;
+
+/** Staff are known by their email address alone, so the part before the @ stands in for a name. */
+const userName = (email: string) => email.split("@")[0];
 
 export function ConsoleSidebar({ email, isAdmin, newEnquiries, startsCollapsed }: ConsoleSidebarProps) {
   const [collapsed, setCollapsed] = useState(startsCollapsed);
@@ -41,19 +43,20 @@ export function ConsoleSidebar({ email, isAdmin, newEnquiries, startsCollapsed }
         </div>
         <ConsoleNav items={items} />
         <div className="console__account">
-          {email ? <p className="console__email">{email}</p> : null}
-          <div className="console__account-tools">
-            <form action={signOutStaff}>
-              <button type="submit" className="console__tool" title="Sign out">
-                <ConsoleIcon name="signOut" />
-                <span className="console__tool-label">Sign out</span>
-              </button>
-            </form>
-            <ThemeToggle />
-          </div>
+          {email ? (
+            <p className="console__user" title={email}>
+              {userName(email)}
+            </p>
+          ) : null}
+          <form action={signOutStaff}>
+            <button type="submit" className="console__tool console__tool--round" title="Sign out">
+              <ConsoleIcon name="signOut" />
+              <span className="visually-hidden">Sign out</span>
+            </button>
+          </form>
           <button type="button" className="console__tool console__toggle" aria-expanded={!collapsed} title={collapsed ? "Expand menu" : "Collapse menu"} onClick={toggle}>
             <ConsoleIcon name={collapsed ? "expand" : "collapse"} />
-            <span className="console__tool-label">{collapsed ? "Expand menu" : "Collapse menu"}</span>
+            <span className="visually-hidden">{collapsed ? "Expand menu" : "Collapse menu"}</span>
           </button>
         </div>
       </div>

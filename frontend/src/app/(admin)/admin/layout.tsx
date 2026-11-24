@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AccessDenied } from "@/components/admin/AccessDenied";
 import { ConsoleSidebar } from "@/components/admin/ConsoleSidebar";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { getEnquirySummary } from "@/lib/admin-api";
 import { load } from "@/lib/admin-load";
 import { consoleMenuCookie } from "@/lib/console-menu";
@@ -22,9 +23,14 @@ export default async function StaffConsoleLayout({ children }: Readonly<{ childr
         newEnquiries={newEnquiries}
         startsCollapsed={(await cookies()).get(consoleMenuCookie)?.value === "collapsed"}
       />
-      <main id="main" className="console__main">
-        {session.isStaff ? children : <AccessDenied />}
-      </main>
+      <div className="console__page">
+        <div className="console__topbar">
+          <ThemeToggle />
+        </div>
+        <main id="main" className="console__main">
+          {session.isStaff ? children : <AccessDenied />}
+        </main>
+      </div>
     </div>
   );
 }
