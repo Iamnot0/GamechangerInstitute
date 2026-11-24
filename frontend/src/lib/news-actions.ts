@@ -69,11 +69,12 @@ async function confirmDocument(document: PostDocument | null): Promise<PostDocum
   return { url: stored.url, name: String(document.name).trim().slice(0, 120), size_bytes: stored.size };
 }
 
-/** For a photo that was uploaded and then taken out again before the post was saved. */
-export async function discardPhoto(photo: Pick<PostPhoto, "id" | "src">): Promise<ActionResult> {
+/** For a photo that was uploaded and then taken out again before the post was saved. The file
+    to remove is the one the service says belonged to that record, never one the browser names. */
+export async function discardPhoto(photoId: string): Promise<ActionResult> {
   return attempt(async () => {
-    await api.deletePhoto(photo.id);
-    await removeFiles([photo.src]);
+    const deleted = await api.deletePhoto(photoId);
+    await removeFiles([deleted.src]);
   });
 }
 

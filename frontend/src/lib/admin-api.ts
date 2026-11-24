@@ -86,7 +86,8 @@ const id = encodeURIComponent;
 
 export const createPhoto = (photo: NewPhoto) => request<PostPhoto>("/v1/admin/photos", json("POST", photo));
 
-export const deletePhoto = (photoId: string) => request<void>(`/v1/admin/photos/${id(photoId)}`, { method: "DELETE" });
+/** Resolves to the address of the deleted photo's file, as the service recorded it. */
+export const deletePhoto = (photoId: string) => request<{ src: string }>(`/v1/admin/photos/${id(photoId)}`, { method: "DELETE" });
 
 export async function listPosts(): Promise<AdminPost[]> {
   return (await request<{ items: AdminPost[] }>("/v1/admin/posts?limit=100")).items;

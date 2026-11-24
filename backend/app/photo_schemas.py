@@ -44,3 +44,9 @@ class Photo(BaseModel):
 
 class StoredPhoto(Photo):
     id: UUID
+
+
+class DeletedPhoto(BaseModel):
+    """Where the deleted photo's file is kept, so the caller can remove exactly that file from storage."""
+
+    src: str

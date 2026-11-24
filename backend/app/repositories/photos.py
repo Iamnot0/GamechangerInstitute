@@ -1,4 +1,5 @@
 from collections.abc import Collection
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 from uuid import UUID
@@ -16,6 +17,12 @@ class PhotoDeletionOutcome(StrEnum):
     DELETED = "deleted"
     ATTACHED = "attached"
     NOT_FOUND = "not_found"
+
+
+@dataclass(frozen=True, slots=True)
+class PhotoDeletion:
+    outcome: PhotoDeletionOutcome
+    url: str | None = None
 
 
 class PhotoRepository:
@@ -39,19 +46,23 @@ class PhotoRepository:
             raise
         return photo
 
-    async def delete(self, photo_id: UUID) -> PhotoDeletionOutcome:
-        """Deletes a photo no post shows. The row lock makes a post attaching it meanwhile wait and then fail."""
-        locked = await self._session.scalar(select(MediaAsset.id).where(MediaAsset.id == photo_id).with_for_update())
-        if locked is None:
+    async def delete(self, photo_id: UUID) -> PhotoDeletion:
+        """Deletes a photo no post shows and reports the address of its file.
+
+        The row lock makes a post attaching it meanwhile wait and then fail. The address comes
+        from the deleted row, so the caller never has to trust anyone else's word for which file to remove.
+        """
+        url = await self._session.scalar(select(MediaAsset.url).where(MediaAsset.id == photo_id).with_for_update())
+        if url is None:
             await self._session.rollback()
-            return PhotoDeletionOutcome.NOT_FOUND
+            return PhotoDeletion(PhotoDeletionOutcome.NOT_FOUND)
         attached = await self._session.scalar(select(PostPhoto.post_id).where(PostPhoto.media_id == photo_id))
         if attached is not None:
             await self._session.rollback()
-            return PhotoDeletionOutcome.ATTACHED
+            return PhotoDeletion(PhotoDeletionOutcome.ATTACHED)
         await self._session.execute(delete(MediaAsset).where(MediaAsset.id == photo_id))
         await self._session.commit()
-        return PhotoDeletionOutcome.DELETED
+        return PhotoDeletion(PhotoDeletionOutcome.DELETED, url)
 
     async def hold(self, photo_ids: Collection[UUID]) -> dict[UUID, UUID | None]:
         """The post each existing photo belongs to, if any, with the photos locked until the transaction ends.

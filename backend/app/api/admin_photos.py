@@ -9,7 +9,7 @@ from app.api.staff_actions import log_staff_action
 from app.dependencies import MediaAllowedHostsDep, PhotoRepositoryDep, StaffDep, require_json_body, require_staff
 from app.media_urls import is_stored_file_url
 from app.models import MediaAsset
-from app.photo_schemas import PhotoSubmission, StoredPhoto
+from app.photo_schemas import DeletedPhoto, PhotoSubmission, StoredPhoto
 from app.problems import InvalidField, invalid_fields, problem_responses
 from app.repositories.photos import PhotoDeletionOutcome
 
@@ -54,13 +54,14 @@ async def add_photo(
     return StoredPhoto.model_validate(photo)
 
 
-@router.delete("/{photo_id}", status_code=HTTPStatus.NO_CONTENT, responses=problem_responses(404, 409, 422))
-async def delete_photo(photo_id: UUID, staff: StaffDep, photos: PhotoRepositoryDep) -> None:
-    outcome = await photos.delete(photo_id)
-    if outcome is PhotoDeletionOutcome.NOT_FOUND:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="This photo does not exist.")
-    if outcome is PhotoDeletionOutcome.ATTACHED:
+@router.delete("/{photo_id}", responses=problem_responses(404, 409, 422))
+async def delete_photo(photo_id: UUID, staff: StaffDep, photos: PhotoRepositoryDep) -> DeletedPhoto:
+    deletion = await photos.delete(photo_id)
+    if deletion.outcome is PhotoDeletionOutcome.ATTACHED:
         raise HTTPException(
             status_code=HTTPStatus.CONFLICT, detail="This photo is part of a post. Remove it from the post instead."
         )
+    if deletion.url is None:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="This photo does not exist.")
     log_staff_action(logger, staff, "delete_photo", photo_id=photo_id)
+    return DeletedPhoto(src=deletion.url)

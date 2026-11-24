@@ -113,7 +113,7 @@ export function PostEditor({ post }: { post: AdminPost | null }) {
   // in this sitting has no post yet, so it is cleared from storage straight away.
   const removePhoto = (photo: PostPhoto) => {
     setPhotos((current) => current.filter((item) => item.id !== photo.id));
-    if (!savedPhotoIds.has(photo.id)) void discardPhoto({ id: photo.id, src: photo.src });
+    if (!savedPhotoIds.has(photo.id)) void discardPhoto(photo.id);
   };
 
   const addPdf = async (file: File | undefined) => {
