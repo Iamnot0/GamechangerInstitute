@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Newsreader, Source_Sans_3 } from "next/font/google";
-import { site } from "@/content/site";
+import { programmeName, site } from "@/content/site";
+import { shareCard } from "@/lib/metadata";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -20,16 +21,11 @@ const text = Source_Sans_3({
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: `ARISE Leadership Transformation Programme Series · ${site.name}`,
+    default: `${programmeName} | GameChanger`,
     template: `%s · ${site.name}`,
   },
   description: site.description,
-  openGraph: {
-    type: "website",
-    siteName: site.name,
-    locale: "en_SG",
-    url: "/",
-  },
+  ...shareCard("/"),
   alternates: { canonical: "/" },
 };
 

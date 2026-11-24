@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { ClosingCta } from "@/components/sections/ClosingCta";
 import { ConfidentialitySection } from "@/components/sections/ConfidentialitySection";
 import { CorporateAdditionsSection } from "@/components/sections/CorporateAdditionsSection";
@@ -7,13 +6,16 @@ import { RolloutSection } from "@/components/sections/RolloutSection";
 import { SuccessStoriesSection } from "@/components/sections/SuccessStoriesSection";
 import { TracksSection } from "@/components/sections/TracksSection";
 import { PageIntro } from "@/components/ui/PageIntro";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { pageMetadata } from "@/lib/metadata";
+import { breadcrumb } from "@/lib/structured-data";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "For organisations",
   description:
-    "The corporate track: cohorts of 8 to 12 leaders, sponsor compacts with dated actions, an environment scan and aggregate reporting that never exposes an individual's record.",
-  alternates: { canonical: "/organisations/" },
-};
+    "The corporate track: cohorts of 8 to 12 leaders, sponsor compacts with dated actions, an environment scan, and reporting that never exposes an individual.",
+  path: "/organisations/",
+});
 
 export default function OrganisationsPage() {
   return (
@@ -34,6 +36,7 @@ export default function OrganisationsPage() {
         body="Tell us about the leaders you have in mind and the transition they are making. We will come back with how a corporate cohort would run in your organisation."
         primary={{ href: "/register/?track=organisation", label: "Start a corporate enquiry" }}
       />
+      <JsonLd data={breadcrumb("For organisations", "/organisations/")} />
     </>
   );
 }

@@ -1,14 +1,16 @@
-import type { Metadata } from "next";
 import { Suspense } from "react";
 import { RegisterForm } from "@/components/forms/RegisterForm";
 import { RegisterFormWithTrack } from "@/components/forms/RegisterFormWithTrack";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { pageMetadata } from "@/lib/metadata";
+import { breadcrumb } from "@/lib/structured-data";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Register interest",
   description:
     "Register interest in the ARISE Leadership Transformation Programme Series pilot, for yourself or for a cohort from your organisation.",
-  alternates: { canonical: "/register/" },
-};
+  path: "/register/",
+});
 
 const nextSteps = [
   {
@@ -53,6 +55,7 @@ export default function RegisterPage() {
           </Suspense>
         </div>
       </div>
+      <JsonLd data={breadcrumb("Register interest", "/register/")} />
     </section>
   );
 }

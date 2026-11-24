@@ -2,9 +2,11 @@ export const site = {
   name: "GameChanger Institute",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://gamechanger.institute",
   description:
-    "The ARISE Leadership Transformation Programme Series: an ICF-informed pathway to positive transformation for individuals and organisations, through mentorship and positive psychology support.",
+    "ARISE Leadership Transformation Programme Series: an ICF-informed path from capacity to performance, with steward mentors and a positive psychology coach.",
   tagline: ["Build the capacity.", "Change the environment.", "Measure the participation."],
 } as const;
+
+export const programmeName = "ARISE Leadership Transformation Programme Series";
 
 export type NavItem = { href: string; label: string };
 

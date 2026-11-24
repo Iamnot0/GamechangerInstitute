@@ -1,8 +1,12 @@
+import { preload } from "react-dom";
 import { HeroBackdrop } from "@/components/figures/HeroBackdrop";
 import { ButtonLink } from "@/components/ui/ButtonLink";
+import { heroVideo } from "@/content/media";
 import { registerLink } from "@/content/site";
 
 export function HomeHero() {
+  preload(heroVideo.poster, { as: "image", fetchPriority: "high" });
+
   return (
     <section className="hero" aria-labelledby="hero-title">
       <HeroBackdrop />

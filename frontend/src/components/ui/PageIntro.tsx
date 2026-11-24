@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { preload } from "react-dom";
 
 type PageIntroProps = {
   context: string;
@@ -8,6 +9,8 @@ type PageIntroProps = {
 };
 
 export function PageIntro({ context, title, lede, children }: PageIntroProps) {
+  preload("/images/backdrop-rings.svg", { as: "image" });
+
   return (
     <section className="page-intro" aria-labelledby="page-title">
       <div className="page-intro__inner">

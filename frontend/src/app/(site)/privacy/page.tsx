@@ -1,11 +1,14 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { pageMetadata } from "@/lib/metadata";
+import { breadcrumb } from "@/lib/structured-data";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Privacy notice",
-  description: "How GameChanger Institute collects, uses and protects the personal data you share through this website.",
-  alternates: { canonical: "/privacy/" },
-};
+  description:
+    "How GameChanger Institute collects, uses and protects the personal data you share through this website.",
+  path: "/privacy/",
+});
 
 export default function PrivacyPage() {
   return (
@@ -55,6 +58,7 @@ export default function PrivacyPage() {
           </Link>
         </p>
       </div>
+      <JsonLd data={breadcrumb("Privacy notice", "/privacy/")} />
     </article>
   );
 }

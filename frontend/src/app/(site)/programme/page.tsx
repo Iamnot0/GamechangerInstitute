@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { ClosingCta } from "@/components/sections/ClosingCta";
 import { EnginesSection } from "@/components/sections/EnginesSection";
 import { IllustrativePlanSection } from "@/components/sections/IllustrativePlanSection";
@@ -14,13 +13,18 @@ import { TeamSection } from "@/components/sections/TeamSection";
 import { WeekByWeekSection } from "@/components/sections/WeekByWeekSection";
 import { PageIntro } from "@/components/ui/PageIntro";
 import { registerLink } from "@/content/site";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { pageMetadata } from "@/lib/metadata";
+import { breadcrumb, programmeCourse } from "@/lib/structured-data";
 
-export const metadata: Metadata = {
-  title: "ARISE Leadership Transformation Programme Series",
-  description:
-    "Twelve weeks of ICF-informed leadership development with steward mentors and a positive psychology coach, followed up at three and six months.",
-  alternates: { canonical: "/programme/" },
-};
+const description =
+  "Twelve weeks of ICF-informed leadership development with steward mentors and a positive psychology coach, followed up at three and six months.";
+
+export const metadata = pageMetadata({
+  title: { absolute: "How the ARISE Leadership Transformation Programme Series works" },
+  description,
+  path: "/programme/",
+});
 
 export default function ProgrammePage() {
   return (
@@ -47,6 +51,8 @@ export default function ProgrammePage() {
         body="We will talk through the role outcome you want, the support you need, and whether the programme is the right fit."
         primary={registerLink}
       />
+      <JsonLd data={breadcrumb("Programme", "/programme/")} />
+      <JsonLd data={programmeCourse(description)} />
     </>
   );
 }
