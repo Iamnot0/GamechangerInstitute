@@ -1,3 +1,4 @@
+import { GapFigure } from "@/components/figures/GapFigure";
 import { principle } from "@/content/programme";
 
 export function PrincipleSection() {
@@ -7,6 +8,10 @@ export function PrincipleSection() {
         <h2 id="principle-title" className="principle__title">
           {principle.title}
         </h2>
+
+        <div className="principle__figure">
+          <GapFigure />
+        </div>
 
         <dl className="principle__terms">
           {[principle.capacity, principle.performance].map((item) => (

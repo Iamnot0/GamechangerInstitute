@@ -1,4 +1,3 @@
-import { GapFigure } from "@/components/figures/GapFigure";
 import { HeroBackdrop } from "@/components/figures/HeroBackdrop";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { registerLink } from "@/content/site";
@@ -26,9 +25,6 @@ export function HomeHero() {
               Read the programme
             </ButtonLink>
           </div>
-        </div>
-        <div className="hero__figure">
-          <GapFigure />
         </div>
       </div>
     </section>

@@ -32,7 +32,7 @@ export function HeroBackdrop() {
         aria-hidden="true"
       >
         {heroVideo.sources.map((source) => (
-          <source key={source.src} src={source.src} type="video/mp4" media={source.media} />
+          <source key={source.src} src={source.src} type={source.type} media={source.media} />
         ))}
       </video>
       <div className="hero-backdrop__scrim" />

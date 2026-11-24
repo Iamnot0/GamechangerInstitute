@@ -87,11 +87,4 @@ export const patron = {
   } satisfies Photo,
 } as const;
 
-export const showcase: Photo = {
-  src: "/images/institute-showcase-1280.webp",
-  width: 1280,
-  height: 862,
-  alt: "GameChanger Institute leaders gathered at the GameChanger stand at an industry event.",
-};
-
 export const membershipTiers = ["Member", "Fellow", "Steward Circle", "Enterprise"] as const;
