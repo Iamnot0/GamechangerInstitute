@@ -10,6 +10,10 @@ _YOUTUBE_SHORT_PATH: Final = re.compile(rf"/({_YOUTUBE_ID})/?")
 _YOUTUBE_NAMED_PATH: Final = re.compile(rf"/(?:shorts|embed)/({_YOUTUBE_ID})/?")
 _YOUTUBE_WATCH_PATH: Final = re.compile(r"/watch/?")
 _UNSAFE_URL_CHARACTERS: Final = re.compile(r"[\s\\\x00-\x1f\x7f]")
+_CANONICAL_FILE_URL: Final = re.compile(
+    r"https://(?P<host>[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+)(?P<path>(?:/[A-Za-z0-9._-]+)+)"
+)
+_DOT_SEGMENTS: Final = frozenset({".", ".."})
 
 
 def _split(url: str) -> SplitResult | None:
@@ -47,11 +51,16 @@ def youtube_watch_url(video_id: str) -> str:
 
 
 def https_file_host(url: str) -> str | None:
-    """The host of an https URL that names a file, or nothing when the URL is anything else."""
-    parts = _split(url)
-    if parts is None or parts.hostname is None or parts.scheme != "https" or parts.fragment or parts.query:
+    """The host of an https file URL already in its one canonical spelling, or nothing for anything else.
+
+    A file must have exactly one accepted address, so that "one record per URL" means one record
+    per file: lowercase scheme and host, plain path segments, and no port, credentials, query,
+    fragment, percent-encoding or dot segments.
+    """
+    match = _CANONICAL_FILE_URL.fullmatch(url)
+    if match is None or not _DOT_SEGMENTS.isdisjoint(match["path"].split("/")):
         return None
-    return parts.hostname if len(parts.path) > 1 else None
+    return match["host"]
 
 
 def is_allowed_host(host: str, allowed: Iterable[str]) -> bool:
