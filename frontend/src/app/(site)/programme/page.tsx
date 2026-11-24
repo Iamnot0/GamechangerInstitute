@@ -16,7 +16,7 @@ import { PageIntro } from "@/components/ui/PageIntro";
 import { registerLink } from "@/content/site";
 
 export const metadata: Metadata = {
-  title: "The Leadership Transformation Programme",
+  title: "ARISE Leadership Transformation Program Series",
   description:
     "Twelve weeks of ICF-informed leadership development with steward mentors and a positive psychology coach, followed up at three and six months.",
   alternates: { canonical: "/programme/" },
@@ -26,7 +26,7 @@ export default function ProgrammePage() {
   return (
     <>
       <PageIntro
-        context="The Leadership Transformation Programme"
+        context="ARISE Leadership Transformation Program Series"
         title="Build the capacity. Change the environment. Measure the participation."
         lede="Each leader chooses two or three role outcomes that matter to them. Mentors, a coach and a sponsor then work on one agreed plan, reviewed against what happens at work."
       />

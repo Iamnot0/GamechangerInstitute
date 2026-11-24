@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>From capacity to performance.</strong><br>
-  Website and enquiry platform for the GameChanger Leadership Transformation Programme.
+  Website and enquiry platform for the ARISE Leadership Transformation Program Series.
 </p>
 
 <p align="center">

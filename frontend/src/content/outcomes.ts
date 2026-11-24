@@ -3,7 +3,7 @@ import type { Photo } from "@/content/institute";
 export const successStories = {
   title: "Success stories",
   lede: "Cohorts and workshops GCI has run with leading organisations, delivering capability and job-impact outcomes.",
-  note: "These are earlier GCI engagements. The Leadership Transformation Programme pilot has not yet run, and its results will be reported only after follow-up.",
+  note: "These are earlier GCI engagements. The ARISE Leadership Transformation Program Series pilot has not yet run, and its results will be reported only after follow-up.",
   photos: [
     {
       src: "/images/cohort-1-879.webp",

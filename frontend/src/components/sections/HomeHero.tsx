@@ -9,14 +9,17 @@ export function HomeHero() {
       <div className="hero__inner">
         <div className="hero__copy">
           <h1 id="hero-title" className="hero__title">
-            <span className="hero__word">The</span> <span className="hero__word">GameChanger</span>{" "}
-            <span className="hero__word">Leadership</span> <em className="hero__word">Transformation</em>{" "}
-            <span className="hero__word">Programme</span>
+            <em className="hero__word">ARISE</em>{" "}
+            <span className="hero__word">Leadership</span>{" "}
+            <span className="hero__word">Transformation</span>{" "}
+            <span className="hero__word">Program</span>{" "}
+            <span className="hero__word">Series</span>
           </h1>
           <p className="hero__tagline">From capacity to performance.</p>
           <p className="hero__lede">
-            An ICF-informed pathway to positive transformation for individuals and organisations, through mentorship
-            by serving leaders and positive psychology support.
+            An ICF-informed pathway to positive transformation for individuals
+            and organisations, through mentorship by serving leaders and
+            positive psychology support.
           </p>
           <div className="hero__actions">
             <ButtonLink href={registerLink.href} variant="inverse">
