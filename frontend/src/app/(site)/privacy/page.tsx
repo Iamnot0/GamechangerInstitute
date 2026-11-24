@@ -49,7 +49,10 @@ export default function PrivacyPage() {
         <p>
           Under Singapore’s Personal Data Protection Act 2012 you may ask to access or correct your personal data, or
           withdraw your consent. Contact our data protection officer at{" "}
-          <mark className="legal__placeholder">[Data protection officer email to be confirmed before launch]</mark>.
+          <a href="mailto:admin@gamechanger.institute" className="text-link">
+            admin@gamechanger.institute
+          </a>
+          .
         </p>
 
         <p className="legal__back">
